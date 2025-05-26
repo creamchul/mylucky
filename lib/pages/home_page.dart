@@ -657,16 +657,12 @@ class _MyLuckyHomePageState extends State<MyLuckyHomePage> with WidgetsBindingOb
                   ),
                 );
                 
-                // 결과가 있으면 사용자 정보 업데이트
                 if (result != null && result is UserModel) {
-                  setState(() {
-                    _currentUser = result;
-                    _consecutiveDays = result.consecutiveDays; // 연속 출석일도 업데이트
-                    _userNickname = result.nickname; // 닉네임도 업데이트
-                  });
-                  
+                  // 더보기에서 돌아온 후, 항상 최신 사용자 정보를 SharedPreferences에서 다시 불러오고 출석도 새로고침
+                  await _refreshUserData();
+                  await _checkTodayAttendance();
                   if (kDebugMode) {
-                    print('홈 페이지: 더보기에서 돌아온 후 사용자 정보 업데이트 완료');
+                    print('홈 페이지: 더보기에서 돌아온 후 사용자 정보 및 출석 새로고침 완료');
                   }
                 }
               }
@@ -787,11 +783,15 @@ class _MyLuckyHomePageState extends State<MyLuckyHomePage> with WidgetsBindingOb
                             ),
                           );
                           
-                          // 결과가 있으면 사용자 정보 업데이트
                           if (result != null && result is UserModel) {
+                            // 더보기에서 돌아온 후, 항상 최신 사용자 정보를 SharedPreferences에서 다시 불러옴
+                            final refreshedUser = await UserService.getCurrentUser();
                             setState(() {
-                              _currentUser = result;
+                              _currentUser = refreshedUser ?? result;
                             });
+                            if (kDebugMode) {
+                              print('홈 페이지: 더보기에서 돌아온 후 사용자 정보 업데이트 완료');
+                            }
                           }
                         }
                       },
@@ -848,11 +848,15 @@ class _MyLuckyHomePageState extends State<MyLuckyHomePage> with WidgetsBindingOb
                             ),
                           );
                           
-                          // 결과가 있으면 사용자 정보 업데이트
                           if (result != null && result is UserModel) {
+                            // 더보기에서 돌아온 후, 항상 최신 사용자 정보를 SharedPreferences에서 다시 불러옴
+                            final refreshedUser = await UserService.getCurrentUser();
                             setState(() {
-                              _currentUser = result;
+                              _currentUser = refreshedUser ?? result;
                             });
+                            if (kDebugMode) {
+                              print('홈 페이지: 더보기에서 돌아온 후 사용자 정보 업데이트 완료');
+                            }
                           }
                         }
                       },
@@ -908,11 +912,15 @@ class _MyLuckyHomePageState extends State<MyLuckyHomePage> with WidgetsBindingOb
                             ),
                           );
                           
-                          // 결과가 있으면 사용자 정보 업데이트
                           if (result != null && result is UserModel) {
+                            // 더보기에서 돌아온 후, 항상 최신 사용자 정보를 SharedPreferences에서 다시 불러옴
+                            final refreshedUser = await UserService.getCurrentUser();
                             setState(() {
-                              _currentUser = result;
+                              _currentUser = refreshedUser ?? result;
                             });
+                            if (kDebugMode) {
+                              print('홈 페이지: 더보기에서 돌아온 후 사용자 정보 업데이트 완료');
+                            }
                           }
                         }
                       },
