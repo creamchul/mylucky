@@ -17,48 +17,35 @@ class UserService {
   /// 사용자 초기화 (웹/모바일 통합)
   static Future<Map<String, dynamic>> initializeUser() async {
     try {
-      if (kIsWeb) {
-        // 웹에서는 로컬 스토리지 사용
-        final prefs = await SharedPreferences.getInstance();
-        final userJson = prefs.getString(_userKey);
-        
-        if (userJson != null) {
-          // 기존 사용자
-          final userData = json.decode(userJson);
-          final user = UserModel.fromJson(userData);
-          
-          return {
-            'userId': user.id,
-            'nickname': user.nickname,
-            'user': user,
-            'isNewUser': false,
-          };
-        } else {
-          // 새 사용자
-          final userId = 'web_user_${DateTime.now().millisecondsSinceEpoch}';
-          return {
-            'userId': userId,
-            'nickname': '',
-            'user': null,
-            'isNewUser': true,
-          };
-        }
-      }
+      // 웹과 모바일 모두 SharedPreferences 사용
+      final prefs = await SharedPreferences.getInstance();
+      final userJson = prefs.getString(_userKey);
       
-      // 모바일에서는 Firebase 사용
-      final userId = await FirebaseService.getCurrentUserId();
-      final user = await FirebaseService.getUser(userId);
-      
-      if (user != null) {
+      if (userJson != null) {
         // 기존 사용자
+        final userData = json.decode(userJson);
+        final user = UserModel.fromJson(userData);
+        
+        if (kDebugMode) {
+          print('UserService: 기존 사용자 로드 - ${user.nickname}');
+        }
+        
         return {
-          'userId': userId,
+          'userId': user.id,
           'nickname': user.nickname,
           'user': user,
           'isNewUser': false,
         };
       } else {
         // 새 사용자
+        final userId = kIsWeb 
+            ? 'web_user_${DateTime.now().millisecondsSinceEpoch}'
+            : 'mobile_user_${DateTime.now().millisecondsSinceEpoch}';
+            
+        if (kDebugMode) {
+          print('UserService: 새 사용자 감지 - $userId');
+        }
+        
         return {
           'userId': userId,
           'nickname': '',
@@ -85,13 +72,22 @@ class UserService {
         nickname: nickname,
       );
       
-      if (kIsWeb) {
-        // 웹에서는 로컬 스토리지에 저장
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString(_userKey, json.encode(newUser.toJson()));
-      } else {
-        // 모바일에서는 Firebase에 저장
-        await FirebaseService.createUser(newUser);
+      // 웹과 모바일 모두 SharedPreferences에 저장
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_userKey, json.encode(newUser.toJson()));
+      
+      // Firebase는 선택적으로 사용 (모바일에서만)
+      if (!kIsWeb) {
+        try {
+          await FirebaseService.createUser(newUser);
+          if (kDebugMode) {
+            print('UserService: Firebase에도 사용자 저장 완료');
+          }
+        } catch (e) {
+          if (kDebugMode) {
+            print('UserService: Firebase 저장 실패 (로컬 저장은 성공) - $e');
+          }
+        }
       }
       
       if (kDebugMode) {
@@ -546,5 +542,64 @@ class UserService {
 
   static String _formatDate(DateTime date) {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  }
+
+  // ========================================
+  // 사용자 정보 업데이트
+  // ========================================
+
+  /// 사용자 정보 업데이트 (SharedPreferences에 저장)
+  static Future<void> updateUser(UserModel user) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_userKey, json.encode(user.toJson()));
+      
+      if (kDebugMode) {
+        print('UserService: 사용자 정보 업데이트 완료 - ${user.nickname}');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('UserService: 사용자 정보 업데이트 실패 - $e');
+      }
+      rethrow;
+    }
+  }
+
+  /// 현재 사용자 정보 가져오기
+  static Future<UserModel?> getCurrentUser() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userJson = prefs.getString(_userKey);
+      
+      if (userJson != null) {
+        final userData = json.decode(userJson);
+        return UserModel.fromJson(userData);
+      }
+      
+      return null;
+    } catch (e) {
+      if (kDebugMode) {
+        print('UserService: 현재 사용자 정보 가져오기 실패 - $e');
+      }
+      return null;
+    }
+  }
+
+  // ========================================
+  // 오늘의 운세 로컬 저장/불러오기 (웹)
+  // ========================================
+  static Future<void> saveTodayFortuneWeb({
+    required String userId,
+    required String fortuneMessage,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final todayKey = 'fortune_${userId}_${DateTime.now().toIso8601String().substring(0, 10)}';
+    await prefs.setString(todayKey, fortuneMessage);
+  }
+
+  static Future<String?> loadTodayFortuneWeb({required String userId}) async {
+    final prefs = await SharedPreferences.getInstance();
+    final todayKey = 'fortune_${userId}_${DateTime.now().toIso8601String().substring(0, 10)}';
+    return prefs.getString(todayKey);
   }
 }

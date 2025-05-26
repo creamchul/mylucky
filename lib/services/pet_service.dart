@@ -1,9 +1,58 @@
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 import '../models/models.dart';
 import 'firebase_service.dart';
 import 'reward_service.dart';
 
 class PetService {
+  static const String _petsKey = 'user_pets';
+  
+  // ========================================
+  // 로컬 저장 관리
+  // ========================================
+  
+  /// 펫 목록을 로컬에 저장
+  static Future<void> _savePetsToLocal(String userId, List<PetModel> pets) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final petsJson = pets.map((pet) => pet.toJson()).toList();
+      await prefs.setString('${_petsKey}_$userId', json.encode(petsJson));
+      
+      if (kDebugMode) {
+        print('PetService: 펫 목록 로컬 저장 완료 (${pets.length}개)');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('PetService: 펫 목록 로컬 저장 실패 - $e');
+      }
+    }
+  }
+  
+  /// 로컬에서 펫 목록 불러오기
+  static Future<List<PetModel>> _loadPetsFromLocal(String userId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final petsJson = prefs.getString('${_petsKey}_$userId');
+      
+      if (petsJson != null) {
+        final List<dynamic> petsList = json.decode(petsJson);
+        final pets = petsList.map((json) => PetModel.fromJson(json)).toList();
+        
+        if (kDebugMode) {
+          print('PetService: 로컬에서 펫 목록 로드 완료 (${pets.length}개)');
+        }
+        
+        return pets;
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('PetService: 로컬 펫 목록 로드 실패 - $e');
+      }
+    }
+    
+    return [];
+  }
   
   // ========================================
   // 펫 생성 및 관리
@@ -26,6 +75,11 @@ class PetService {
         species: species,
       );
       
+      // 로컬에 저장
+      final existingPets = await _loadPetsFromLocal(currentUser.id);
+      existingPets.insert(0, demoPet);
+      await _savePetsToLocal(currentUser.id, existingPets);
+      
       if (kDebugMode) {
         print('PetService: 웹 환경에서 펫 입양 - $name');
       }
@@ -44,6 +98,11 @@ class PetService {
         type: type,
         species: species,
       );
+      
+      // 로컬에도 저장
+      final existingPets = await _loadPetsFromLocal(currentUser.id);
+      existingPets.insert(0, pet);
+      await _savePetsToLocal(currentUser.id, existingPets);
       
       if (kDebugMode) {
         print('PetService: 펫 입양 완료 - $name ($species)');
@@ -77,16 +136,35 @@ class PetService {
 
     if (kIsWeb) {
       // 웹에서는 로컬 처리만
-      final grownPet = pet.copyWith(
-        stage: pet.nextStage!,
-        level: pet.level + 1,
-        totalPointsInvested: pet.totalPointsInvested + requiredPoints,
-        lastFedAt: DateTime.now(),
-      );
+      PetModel grownPet;
+      
+      if (pet.type == PetType.animal) {
+        grownPet = pet.copyWith(
+          stage: pet.nextStage as GrowthStage,
+          level: pet.level + 1,
+          totalPointsInvested: pet.totalPointsInvested + requiredPoints,
+          lastFedAt: DateTime.now(),
+        );
+      } else {
+        grownPet = pet.copyWith(
+          plantStage: pet.nextStage as PlantStage,
+          level: pet.level + 1,
+          totalPointsInvested: pet.totalPointsInvested + requiredPoints,
+          lastFedAt: DateTime.now(),
+        );
+      }
 
       final updatedUser = currentUser.copyWith(
         rewardPoints: currentUser.rewardPoints - requiredPoints,
       );
+      
+      // 로컬 펫 목록 업데이트
+      final existingPets = await _loadPetsFromLocal(currentUser.id);
+      final petIndex = existingPets.indexWhere((p) => p.id == pet.id);
+      if (petIndex != -1) {
+        existingPets[petIndex] = grownPet;
+        await _savePetsToLocal(currentUser.id, existingPets);
+      }
       
       if (kDebugMode) {
         print('PetService: 웹 환경에서 펫 성장 - ${pet.name} → ${grownPet.stageDisplayName}');
@@ -105,19 +183,38 @@ class PetService {
         currentUser: currentUser,
         pointsToUse: requiredPoints,
         petId: pet.id,
-        description: '${pet.name}을(를) ${pet.nextStage!.toString().split('.').last} 단계로 성장',
+        description: '${pet.name}을(를) ${pet.nextStage.toString().split('.').last} 단계로 성장',
       );
 
       // 펫 성장
-      final grownPet = pet.copyWith(
-        stage: pet.nextStage!,
-        level: pet.level + 1,
-        totalPointsInvested: pet.totalPointsInvested + requiredPoints,
-        lastFedAt: DateTime.now(),
-      );
+      PetModel grownPet;
+      
+      if (pet.type == PetType.animal) {
+        grownPet = pet.copyWith(
+          stage: pet.nextStage as GrowthStage,
+          level: pet.level + 1,
+          totalPointsInvested: pet.totalPointsInvested + requiredPoints,
+          lastFedAt: DateTime.now(),
+        );
+      } else {
+        grownPet = pet.copyWith(
+          plantStage: pet.nextStage as PlantStage,
+          level: pet.level + 1,
+          totalPointsInvested: pet.totalPointsInvested + requiredPoints,
+          lastFedAt: DateTime.now(),
+        );
+      }
 
       // 펫 정보 업데이트
       final updatedPet = await FirebaseService.updatePet(grownPet);
+      
+      // 로컬 펫 목록도 업데이트
+      final existingPets = await _loadPetsFromLocal(currentUser.id);
+      final petIndex = existingPets.indexWhere((p) => p.id == pet.id);
+      if (petIndex != -1) {
+        existingPets[petIndex] = updatedPet;
+        await _savePetsToLocal(currentUser.id, existingPets);
+      }
       
       if (kDebugMode) {
         print('PetService: 펫 성장 완료 - ${pet.name} → ${grownPet.stageDisplayName}');
@@ -178,16 +275,24 @@ class PetService {
   
   /// 사용자의 펫 목록 조회
   static Future<List<PetModel>> getUserPets(String userId) async {
+    // 먼저 로컬에서 펫 목록 로드
+    final localPets = await _loadPetsFromLocal(userId);
+    
     if (kIsWeb) {
-      // 웹에서는 데모 펫 목록
-      return [
+      // 웹에서는 로컬 데이터가 있으면 그것을 사용, 없으면 데모 데이터
+      if (localPets.isNotEmpty) {
+        return localPets;
+      }
+      
+      // 데모 펫 목록 (처음 실행 시에만)
+      final demoPets = [
         PetModel.create(
           id: 'web_pet_1',
           userId: userId,
           name: '미미',
           type: PetType.animal,
           species: 'cat',
-        ).copyWith(stage: GrowthStage.baby),
+        ),
         PetModel.create(
           id: 'web_pet_2',
           userId: userId,
@@ -196,15 +301,30 @@ class PetService {
           species: 'rose',
         ),
       ];
+      
+      // 데모 펫을 로컬에 저장
+      await _savePetsToLocal(userId, demoPets);
+      return demoPets;
     }
 
     try {
-      return await FirebaseService.getUserPets(userId);
+      // 모바일에서는 Firebase에서 가져와서 로컬과 동기화
+      final firebasePets = await FirebaseService.getUserPets(userId);
+      
+      // Firebase 데이터를 로컬에 저장
+      if (firebasePets.isNotEmpty) {
+        await _savePetsToLocal(userId, firebasePets);
+        return firebasePets;
+      }
+      
+      // Firebase에 데이터가 없으면 로컬 데이터 반환
+      return localPets;
     } catch (e) {
       if (kDebugMode) {
-        print('PetService: 펫 목록 조회 실패 - $e');
+        print('PetService: Firebase 펫 목록 조회 실패, 로컬 데이터 사용 - $e');
       }
-      return [];
+      // Firebase 실패 시 로컬 데이터 반환
+      return localPets;
     }
   }
   
@@ -269,7 +389,6 @@ class PetService {
         'dog': '강아지',
         'rabbit': '토끼',
         'hamster': '햄스터',
-        'bird': '새',
       };
       return animalNames[species] ?? species;
     } else {
@@ -292,7 +411,6 @@ class PetService {
         'dog': '🐶',
         'rabbit': '🐰',
         'hamster': '🐹',
-        'bird': '🐦',
       };
       return animalIcons[species] ?? '🐾';
     } else {
@@ -308,18 +426,31 @@ class PetService {
   }
   
   /// 성장 단계별 이모지
-  static String getStageEmoji(GrowthStage stage) {
-    switch (stage) {
-      case GrowthStage.egg:
-        return '🥚';
-      case GrowthStage.baby:
-        return '🐣';
-      case GrowthStage.teen:
-        return '🐥';
-      case GrowthStage.adult:
-        return '🐦';
-      case GrowthStage.master:
-        return '🦅';
+  static String getStageEmoji(PetModel pet) {
+    if (pet.type == PetType.animal) {
+      switch (pet.stage) {
+        case GrowthStage.baby:
+          return '🐣';
+        case GrowthStage.teen:
+          return '🐥';
+        case GrowthStage.adult:
+          return '🐦';
+        case GrowthStage.master:
+          return '🦅';
+      }
+    } else {
+      switch (pet.plantStage!) {
+        case PlantStage.seed:
+          return '🌰';
+        case PlantStage.sprout:
+          return '🌱';
+        case PlantStage.growing:
+          return '🌿';
+        case PlantStage.blooming:
+          return '🌸';
+        case PlantStage.mature:
+          return '🌳';
+      }
     }
   }
 } 

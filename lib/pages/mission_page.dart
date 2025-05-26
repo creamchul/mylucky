@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 // Models imports
 import '../models/models.dart';
@@ -9,6 +10,7 @@ import '../data/mission_data.dart';
 
 // Services imports
 import '../services/user_service.dart';
+import '../services/reward_service.dart';
 
 class MissionPage extends StatefulWidget {
   final UserModel currentUser;
@@ -20,7 +22,7 @@ class MissionPage extends StatefulWidget {
 }
 
 class _MissionPageState extends State<MissionPage>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   String _todayMission = '';
   bool _isMissionCompleted = false;
   bool _isCheckingMission = false;
@@ -40,6 +42,9 @@ class _MissionPageState extends State<MissionPage>
     super.initState();
     
     _currentUser = widget.currentUser; // 초기 사용자 모델 설정
+    
+    // 앱 생명주기 관찰자 추가
+    WidgetsBinding.instance.addObserver(this);
     
     _bounceController = AnimationController(
       duration: const Duration(milliseconds: 600),
@@ -74,9 +79,20 @@ class _MissionPageState extends State<MissionPage>
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _bounceController.dispose();
     _fadeController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    
+    // 앱이 다시 활성화될 때 미션 상태 재확인
+    if (state == AppLifecycleState.resumed) {
+      _checkMissionStatus();
+    }
   }
 
   // 오늘의 미션을 생성하는 함수
@@ -97,17 +113,77 @@ class _MissionPageState extends State<MissionPage>
     }
   }
 
+  // 오늘의 미션 완료 상태를 로컬에 저장
+  Future<void> _saveMissionCompletionStatus(bool isCompleted) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final today = DateTime.now();
+      final todayKey = 'mission_completed_${today.year}_${today.month}_${today.day}_${_currentUser.id}';
+      await prefs.setBool(todayKey, isCompleted);
+      
+      if (kDebugMode) {
+        print('미션 완료 상태 저장: $todayKey = $isCompleted');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('미션 완료 상태 저장 실패: $e');
+      }
+    }
+  }
+
+  // 오늘의 미션 완료 상태를 로컬에서 불러오기
+  Future<bool> _loadMissionCompletionStatus() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final today = DateTime.now();
+      final todayKey = 'mission_completed_${today.year}_${today.month}_${today.day}_${_currentUser.id}';
+      final isCompleted = prefs.getBool(todayKey) ?? false;
+      
+      if (kDebugMode) {
+        print('미션 완료 상태 로드: $todayKey = $isCompleted');
+      }
+      
+      return isCompleted;
+    } catch (e) {
+      if (kDebugMode) {
+        print('미션 완료 상태 로드 실패: $e');
+      }
+      return false;
+    }
+  }
+
   // 오늘의 미션 완료 상태를 확인하는 함수
   Future<void> _checkMissionStatus() async {
     try {
-      final isCompleted = await UserService.checkTodayMissionStatus(_currentUser.id);
+      // 먼저 로컬 저장소에서 확인
+      bool isCompletedLocal = await _loadMissionCompletionStatus();
+      
+      // 서버에서도 확인 (웹이 아닌 경우)
+      bool isCompletedServer = false;
+      if (!kIsWeb) {
+        try {
+          isCompletedServer = await UserService.checkTodayMissionStatus(_currentUser.id);
+        } catch (e) {
+          if (kDebugMode) {
+            print('서버 미션 상태 확인 실패: $e');
+          }
+        }
+      }
+      
+      // 로컬 또는 서버 중 하나라도 완료되어 있으면 완료로 처리
+      final isCompleted = isCompletedLocal || isCompletedServer;
       
       setState(() {
         _isMissionCompleted = isCompleted;
       });
 
+      // 로컬과 서버 상태가 다르면 동기화
+      if (isCompletedLocal != isCompletedServer) {
+        await _saveMissionCompletionStatus(isCompleted);
+      }
+
       if (kDebugMode) {
-        print('오늘의 미션 완료 상태: $_isMissionCompleted');
+        print('오늘의 미션 완료 상태: 로컬=$isCompletedLocal, 서버=$isCompletedServer, 최종=$isCompleted');
       }
     } catch (e) {
       if (kDebugMode) {
@@ -144,26 +220,39 @@ class _MissionPageState extends State<MissionPage>
     });
 
     try {
+      // 미션 완료 처리
       final result = await UserService.completeMission(
         currentUser: _currentUser,
         mission: _todayMission,
       );
 
+      // 포인트 보상 지급
+      final rewardResult = await RewardService.giveMissionReward(
+        currentUser: result['user'] as UserModel,
+      );
+
       setState(() {
         _isMissionCompleted = true;
         _isCheckingMission = false;
-        _currentUser = result['user'] as UserModel; // 업데이트된 사용자 모델
+        _currentUser = rewardResult['user'] as UserModel; // 포인트가 반영된 사용자 모델
       });
+
+      // 로컬 저장소에 완료 상태 저장
+      await _saveMissionCompletionStatus(true);
 
       // 미션 이력 새로고침
       _loadMissionHistory();
       
       if (mounted) {
+        // 포인트 획득 알림 표시
+        _showPointsEarnedSnackBar(rewardResult['pointsEarned'] as int);
+        
+        // 완료 다이얼로그 표시
         _showMissionCompletedDialog();
       }
 
       if (kDebugMode) {
-        print('미션 완료 처리 성공');
+        print('미션 완료 처리 성공 - ${rewardResult['pointsEarned']}포인트 획득');
       }
     } catch (e) {
       setState(() {
@@ -183,6 +272,37 @@ class _MissionPageState extends State<MissionPage>
           ),
         );
       }
+    }
+  }
+
+  // 포인트 획득 알림 표시
+  void _showPointsEarnedSnackBar(int points) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(
+                Icons.stars,
+                color: Colors.amber.shade200,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  '미션 완료로 $points 포인트 획득!',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.orange.shade400,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 3),
+        ),
+      );
     }
   }
 
@@ -248,6 +368,37 @@ class _MissionPageState extends State<MissionPage>
                     fontStyle: FontStyle.italic,
                   ),
                   textAlign: TextAlign.center,
+                ),
+                
+                const SizedBox(height: 16),
+                
+                // 포인트 획득 알림 추가
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.amber.shade200),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.stars,
+                        color: Colors.amber.shade600,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '20 포인트 획득!',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.amber.shade700,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 
                 const SizedBox(height: 24),

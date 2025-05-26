@@ -40,7 +40,7 @@ class UserModel {
       totalMissions: 0,
       completedMissions: 0,
       score: 0,
-      rewardPoints: 100,
+      rewardPoints: 100000, // 신규 사용자 환영 보너스 10만 포인트
       lastActiveDate: now,
       createdAt: now,
     );
@@ -56,7 +56,7 @@ class UserModel {
       totalMissions: data['totalMissions'] as int? ?? 0,
       completedMissions: data['completedMissions'] as int? ?? 0,
       score: data['score'] as int? ?? 0,
-      rewardPoints: data['rewardPoints'] as int? ?? 100,
+      rewardPoints: data['rewardPoints'] as int? ?? 100000,
       lastActiveDate: (data['lastActiveDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
@@ -87,7 +87,7 @@ class UserModel {
       totalMissions: json['totalMissions'] as int? ?? 0,
       completedMissions: json['completedMissions'] as int? ?? 0,
       score: json['score'] as int? ?? 0,
-      rewardPoints: json['rewardPoints'] as int? ?? 100,
+      rewardPoints: json['rewardPoints'] as int? ?? 100000,
       lastActiveDate: DateTime.parse(json['lastActiveDate'] as String? ?? DateTime.now().toIso8601String()),
       createdAt: DateTime.parse(json['createdAt'] as String? ?? DateTime.now().toIso8601String()),
     );

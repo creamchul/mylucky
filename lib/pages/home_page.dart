@@ -28,7 +28,7 @@ class MyLuckyHomePage extends StatefulWidget {
   State<MyLuckyHomePage> createState() => _MyLuckyHomePageState();
 }
 
-class _MyLuckyHomePageState extends State<MyLuckyHomePage> {
+class _MyLuckyHomePageState extends State<MyLuckyHomePage> with WidgetsBindingObserver {
   int _consecutiveDays = 0;
   bool _isLoadingAttendance = true;
   bool _showCelebration = false;
@@ -39,7 +39,23 @@ class _MyLuckyHomePageState extends State<MyLuckyHomePage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _initializeUser();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.resumed) {
+      // 앱이 다시 활성화될 때 사용자 정보 새로고침
+      _refreshUserData();
+    }
   }
 
   // 사용자 초기화 (닉네임 확인 및 생성)
@@ -66,6 +82,27 @@ class _MyLuckyHomePageState extends State<MyLuckyHomePage> {
     }
   }
 
+  // 사용자 데이터 새로고침
+  Future<void> _refreshUserData() async {
+    try {
+      final currentUser = await UserService.getCurrentUser();
+      if (currentUser != null) {
+        setState(() {
+          _currentUser = currentUser;
+          _userNickname = currentUser.nickname;
+        });
+        
+        if (kDebugMode) {
+          print('홈 페이지: 사용자 정보 새로고침 완료 - ${currentUser.nickname}');
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('홈 페이지: 사용자 정보 새로고침 실패 - $e');
+      }
+    }
+  }
+
   // 닉네임 입력 다이얼로그
   Future<void> _showNicknameDialog() async {
     String nickname = '';
@@ -79,67 +116,83 @@ class _MyLuckyHomePageState extends State<MyLuckyHomePage> {
             borderRadius: BorderRadius.circular(20),
           ),
           title: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
                 Icons.person_add,
                 color: AppColors.purple600,
+                size: 20,
               ),
-              SizedBox(width: AppSizes.spaceSmall),
-              Text(
-                AppStrings.welcomeNewUser,
-                style: TextStyle(
-                  fontSize: AppSizes.fontXLarge,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.purple700,
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  AppStrings.welcomeNewUser,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.purple700,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
           ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                AppStrings.nicknamePrompt,
-                style: TextStyle(
-                  fontSize: AppSizes.fontMedium,
-                  color: AppColors.grey600,
-                ),
-              ),
-              SizedBox(height: AppSizes.spaceMedium),
-              TextField(
-                onChanged: (value) => nickname = value,
-                maxLength: 10,
-                decoration: InputDecoration(
-                  hintText: AppStrings.nicknameHint,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(AppSizes.smallBorderRadius),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  AppStrings.nicknamePrompt,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: AppColors.grey600,
                   ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(AppSizes.smallBorderRadius),
-                    borderSide: BorderSide(color: AppColors.purple400),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 16),
+                TextField(
+                  onChanged: (value) => nickname = value,
+                  maxLength: 10,
+                  decoration: InputDecoration(
+                    hintText: AppStrings.nicknameHint,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: AppColors.purple400),
+                    ),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
           actions: [
-            ElevatedButton(
-              onPressed: () async {
-                if (nickname.trim().isEmpty) {
-                  nickname = AppStrings.anonymous;
-                }
-                
-                await _createNewUser(nickname.trim());
-                Navigator.of(context).pop();
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.purple400,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppSizes.smallBorderRadius),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () async {
+                  if (nickname.trim().isEmpty) {
+                    nickname = AppStrings.anonymous;
+                  }
+                  
+                  // 먼저 다이얼로그를 닫고
+                  Navigator.of(context).pop();
+                  
+                  // 그 다음에 사용자 생성
+                  await _createNewUser(nickname.trim());
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.purple400,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  padding: EdgeInsets.symmetric(vertical: 12),
                 ),
+                child: Text(AppStrings.startButton),
               ),
-              child: Text(AppStrings.startButton),
             ),
           ],
         );
@@ -165,6 +218,13 @@ class _MyLuckyHomePageState extends State<MyLuckyHomePage> {
       
       // 새 사용자 생성 후 출석 체크
       _checkTodayAttendance();
+      
+      // 약간의 지연 후 환영 보너스 알림 표시
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted) {
+          _showWelcomeBonusDialog(nickname);
+        }
+      });
     } catch (e) {
       if (kDebugMode) {
         print('사용자 생성 실패: $e');
@@ -374,6 +434,164 @@ class _MyLuckyHomePageState extends State<MyLuckyHomePage> {
     );
   }
 
+  // 환영 보너스 다이얼로그 표시
+  void _showWelcomeBonusDialog(String nickname) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          content: Container(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // 환영 아이콘
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.purple.shade100,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.auto_awesome,
+                    size: 60,
+                    color: Colors.purple.shade600,
+                  ),
+                ),
+                
+                const SizedBox(height: 20),
+                
+                Text(
+                  '🎉 환영합니다! 🎉',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.purple.shade700,
+                  ),
+                ),
+                
+                const SizedBox(height: 16),
+                
+                Text(
+                  '$nickname님, MyLucky에 오신 것을 환영합니다!',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey.shade800,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                
+                const SizedBox(height: 12),
+                
+                Text(
+                  '감사의 의미로 특별한 선물을 준비했어요!',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+                
+                const SizedBox(height: 20),
+                
+                // 포인트 보너스 알림
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.shade50,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.amber.shade300, width: 2),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.stars,
+                            color: Colors.amber.shade600,
+                            size: 28,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            '환영 보너스',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.amber.shade700,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '100,000 포인트',
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.amber.shade800,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '지급 완료!',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.amber.shade700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                
+                const SizedBox(height: 16),
+                
+                Text(
+                  '이 포인트로 귀여운 펫들을 키워보세요!\n매일 운세를 확인하고 미션을 완료하면\n더 많은 포인트를 얻을 수 있어요.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade600,
+                    height: 1.4,
+                  ),
+                ),
+                
+                const SizedBox(height: 20),
+                
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.purple.shade500,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                  ),
+                  child: const Text(
+                    '시작하기',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -430,14 +648,27 @@ class _MyLuckyHomePageState extends State<MyLuckyHomePage> {
             ),
           ),
           IconButton(
-            onPressed: () {
+            onPressed: () async {
               if (_currentUser != null) {
-                Navigator.push(
+                final result = await Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (context) => MoreMenuPage(currentUser: _currentUser!),
                   ),
                 );
+                
+                // 결과가 있으면 사용자 정보 업데이트
+                if (result != null && result is UserModel) {
+                  setState(() {
+                    _currentUser = result;
+                    _consecutiveDays = result.consecutiveDays; // 연속 출석일도 업데이트
+                    _userNickname = result.nickname; // 닉네임도 업데이트
+                  });
+                  
+                  if (kDebugMode) {
+                    print('홈 페이지: 더보기에서 돌아온 후 사용자 정보 업데이트 완료');
+                  }
+                }
               }
             },
             icon: Icon(
@@ -547,14 +778,21 @@ class _MyLuckyHomePageState extends State<MyLuckyHomePage> {
                     height: 88,
                     margin: const EdgeInsets.only(bottom: 16),
                     child: ElevatedButton(
-                      onPressed: () {
+                      onPressed: () async {
                         if (_currentUser != null) {
-                          Navigator.push(
+                          final result = await Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (context) => FortuneResultPage(currentUser: _currentUser!),
                             ),
                           );
+                          
+                          // 결과가 있으면 사용자 정보 업데이트
+                          if (result != null && result is UserModel) {
+                            setState(() {
+                              _currentUser = result;
+                            });
+                          }
                         }
                       },
                       style: ElevatedButton.styleFrom(
@@ -601,14 +839,21 @@ class _MyLuckyHomePageState extends State<MyLuckyHomePage> {
                     height: 88,
                     margin: const EdgeInsets.only(bottom: 16),
                     child: ElevatedButton(
-                      onPressed: () {
+                      onPressed: () async {
                         if (_currentUser != null) {
-                          Navigator.push(
+                          final result = await Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (context) => MissionPage(currentUser: _currentUser!),
                             ),
                           );
+                          
+                          // 결과가 있으면 사용자 정보 업데이트
+                          if (result != null && result is UserModel) {
+                            setState(() {
+                              _currentUser = result;
+                            });
+                          }
                         }
                       },
                       style: ElevatedButton.styleFrom(
@@ -654,14 +899,21 @@ class _MyLuckyHomePageState extends State<MyLuckyHomePage> {
                     width: double.infinity,
                     height: 88,
                     child: ElevatedButton(
-                      onPressed: () {
+                      onPressed: () async {
                         if (_currentUser != null) {
-                          Navigator.push(
+                          final result = await Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (context) => PetCarePage(currentUser: _currentUser!),
                             ),
                           );
+                          
+                          // 결과가 있으면 사용자 정보 업데이트
+                          if (result != null && result is UserModel) {
+                            setState(() {
+                              _currentUser = result;
+                            });
+                          }
                         }
                       },
                       style: ElevatedButton.styleFrom(

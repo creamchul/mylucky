@@ -7,6 +7,7 @@ import '../models/models.dart';
 // Services imports
 import '../services/pet_service.dart';
 import '../services/reward_service.dart';
+import '../services/user_service.dart';
 
 class PetCarePage extends StatefulWidget {
   final UserModel currentUser;
@@ -83,6 +84,9 @@ class _PetCarePageState extends State<PetCarePage> with TickerProviderStateMixin
         _currentUser = result['user'];
       });
 
+      // 사용자 정보를 SharedPreferences에 저장
+      await UserService.updateUser(_currentUser);
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -118,6 +122,9 @@ class _PetCarePageState extends State<PetCarePage> with TickerProviderStateMixin
         _currentUser = result['user'];
       });
 
+      // 사용자 정보를 SharedPreferences에 저장
+      await UserService.updateUser(_currentUser);
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -140,87 +147,104 @@ class _PetCarePageState extends State<PetCarePage> with TickerProviderStateMixin
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        title: Row(
-          children: [
-            Icon(
-              Icons.pets,
+    return WillPopScope(
+      onWillPop: () async {
+        // 뒤로 가기 시 업데이트된 사용자 정보 반환
+        Navigator.pop(context, _currentUser);
+        return false;
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: Icon(
+              Icons.arrow_back_ios,
               color: Colors.green.shade400,
-              size: 20,
             ),
-            const SizedBox(width: 6),
-            Text(
-              '키우기',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: Colors.green.shade600,
+            onPressed: () {
+              // 뒤로 가기 시 업데이트된 사용자 정보 반환
+              Navigator.pop(context, _currentUser);
+            },
+          ),
+          title: Row(
+            children: [
+              Icon(
+                Icons.pets,
+                color: Colors.green.shade400,
+                size: 20,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                '키우기',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.green.shade600,
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            // 포인트 표시
+            Container(
+              margin: const EdgeInsets.only(right: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.amber.shade100,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.amber.shade300),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.stars,
+                    size: 16,
+                    color: Colors.amber.shade700,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${_currentUser.rewardPoints}P',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.amber.shade800,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
-        ),
-        actions: [
-          // 포인트 표시
-          Container(
-            margin: const EdgeInsets.only(right: 16),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.amber.shade100,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.amber.shade300),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.stars,
-                  size: 16,
-                  color: Colors.amber.shade700,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  '${_currentUser.rewardPoints}P',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.amber.shade800,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-        bottom: TabBar(
-          controller: _tabController,
-          labelColor: Colors.green.shade600,
-          unselectedLabelColor: Colors.grey.shade600,
-          indicatorColor: Colors.green.shade400,
-          tabs: const [
-            Tab(text: '내 펫'),
-            Tab(text: '입양하기'),
-          ],
-        ),
-      ),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFFF0F8F0), // 연한 녹색
-              Color(0xFFF8FFF8), // 더 연한 녹색
+          bottom: TabBar(
+            controller: _tabController,
+            labelColor: Colors.green.shade600,
+            unselectedLabelColor: Colors.grey.shade600,
+            indicatorColor: Colors.green.shade400,
+            tabs: const [
+              Tab(text: '내 펫'),
+              Tab(text: '입양하기'),
             ],
           ),
         ),
-        child: TabBarView(
-          controller: _tabController,
-          children: [
-            _buildMyPetsTab(),
-            _buildAdoptionTab(),
-          ],
+        body: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Color(0xFFF0F8F0), // 연한 녹색
+                Color(0xFFF8FFF8), // 더 연한 녹색
+              ],
+            ),
+          ),
+          child: TabBarView(
+            controller: _tabController,
+            children: [
+              _buildMyPetsTab(),
+              _buildAdoptionTab(),
+            ],
+          ),
         ),
       ),
     );
@@ -267,13 +291,13 @@ class _PetCarePageState extends State<PetCarePage> with TickerProviderStateMixin
     return RefreshIndicator(
       onRefresh: _loadUserPets,
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(_getPadding(context)),
         child: GridView.builder(
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            childAspectRatio: 0.8,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: _getCrossAxisCount(context),
+            childAspectRatio: _getChildAspectRatio(context),
+            crossAxisSpacing: _getSpacing(context),
+            mainAxisSpacing: _getSpacing(context),
           ),
           itemCount: _pets.length,
           itemBuilder: (context, index) {
@@ -293,13 +317,13 @@ class _PetCarePageState extends State<PetCarePage> with TickerProviderStateMixin
     final availablePets = PetService.getAvailablePetsForAdoption();
     
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(_getPadding(context)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(_getPadding(context)),
             decoration: BoxDecoration(
               color: Colors.blue.shade50,
               borderRadius: BorderRadius.circular(12),
@@ -350,11 +374,11 @@ class _PetCarePageState extends State<PetCarePage> with TickerProviderStateMixin
           
           Expanded(
             child: GridView.builder(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                childAspectRatio: 1.2,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: _getCrossAxisCount(context),
+                childAspectRatio: _getAdoptionChildAspectRatio(context),
+                crossAxisSpacing: _getSpacing(context),
+                mainAxisSpacing: _getSpacing(context),
               ),
               itemCount: availablePets.length,
               itemBuilder: (context, index) {
@@ -391,32 +415,34 @@ class _PetCarePageState extends State<PetCarePage> with TickerProviderStateMixin
             fontWeight: FontWeight.w600,
           ),
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              '새로운 친구의 이름을 지어주세요!',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey.shade600,
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              onChanged: (value) => petName = value,
-              maxLength: 10,
-              decoration: InputDecoration(
-                hintText: '예: 복실이, 모모 등',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: Colors.green.shade400),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '새로운 친구의 이름을 지어주세요!',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey.shade600,
                 ),
               ),
-            ),
-          ],
+              const SizedBox(height: 16),
+              TextField(
+                onChanged: (value) => petName = value,
+                maxLength: 10,
+                decoration: InputDecoration(
+                  hintText: '예: 복실이, 모모 등',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: Colors.green.shade400),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(
@@ -440,6 +466,66 @@ class _PetCarePageState extends State<PetCarePage> with TickerProviderStateMixin
       ),
     );
   }
+
+  // 반응형 레이아웃을 위한 헬퍼 메서드들
+  int _getCrossAxisCount(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    if (screenWidth > 600) {
+      return 3; // 태블릿이나 큰 화면
+    } else if (screenWidth > 400) {
+      return 2; // 일반적인 휴대폰
+    } else {
+      return 1; // 작은 화면
+    }
+  }
+
+  double _getChildAspectRatio(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final crossAxisCount = _getCrossAxisCount(context);
+    
+    if (screenWidth > 600) {
+      return 0.85; // 태블릿
+    } else if (crossAxisCount == 1) {
+      return 1.5; // 작은 화면에서는 가로로 넓게
+    } else {
+      return 0.8; // 일반적인 휴대폰
+    }
+  }
+
+  double _getAdoptionChildAspectRatio(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final crossAxisCount = _getCrossAxisCount(context);
+    
+    if (screenWidth > 600) {
+      return 1.1; // 태블릿
+    } else if (crossAxisCount == 1) {
+      return 2.0; // 작은 화면에서는 가로로 넓게
+    } else {
+      return 1.0; // 일반적인 휴대폰
+    }
+  }
+
+  double _getSpacing(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    if (screenWidth > 600) {
+      return 16.0; // 태블릿
+    } else if (screenWidth > 400) {
+      return 12.0; // 일반적인 휴대폰
+    } else {
+      return 8.0; // 작은 화면
+    }
+  }
+
+  double _getPadding(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    if (screenWidth > 600) {
+      return 20.0; // 태블릿
+    } else if (screenWidth > 400) {
+      return 16.0; // 일반적인 휴대폰
+    } else {
+      return 12.0; // 작은 화면
+    }
+  }
 }
 
 // 펫 카드 위젯
@@ -454,11 +540,46 @@ class _PetCard extends StatelessWidget {
     required this.onGrow,
   });
 
+  // 반응형 폰트 크기 계산
+  double _getEmojiSize(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    if (screenWidth > 600) return 36.0;
+    if (screenWidth > 400) return 32.0;
+    return 28.0;
+  }
+
+  double _getNameFontSize(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    if (screenWidth > 600) return 16.0;
+    if (screenWidth > 400) return 14.0;
+    return 12.0;
+  }
+
+  double _getInfoFontSize(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    if (screenWidth > 600) return 14.0;
+    if (screenWidth > 400) return 12.0;
+    return 10.0;
+  }
+
+  double _getButtonFontSize(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    if (screenWidth > 600) return 13.0;
+    if (screenWidth > 400) return 11.0;
+    return 9.0;
+  }
+
+  double _getCardPadding(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    if (screenWidth > 600) return 16.0;
+    if (screenWidth > 400) return 12.0;
+    return 8.0;
+  }
+
   @override
   Widget build(BuildContext context) {
     final canGrow = pet.canGrow;
     final hasEnoughPoints = RewardService.hasEnoughPoints(currentUser, pet.pointsToNextStage);
-    final stageEmoji = PetService.getStageEmoji(pet.stage);
     
     return Container(
       decoration: BoxDecoration(
@@ -474,7 +595,7 @@ class _PetCard extends StatelessWidget {
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: EdgeInsets.all(_getCardPadding(context)),
         child: Column(
           children: [
             // 펫 정보
@@ -482,76 +603,113 @@ class _PetCard extends StatelessWidget {
               child: Column(
                 children: [
                   // 펫 아이콘과 이름
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.green.shade50,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Text(
-                      stageEmoji,
-                      style: const TextStyle(fontSize: 32),
+                  Flexible(
+                    flex: 3,
+                    child: Container(
+                      padding: EdgeInsets.all(_getCardPadding(context)),
+                      decoration: BoxDecoration(
+                        color: Colors.green.shade50,
+                        shape: BoxShape.circle,
+                      ),
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          pet.petEmoji,
+                          style: TextStyle(fontSize: _getEmojiSize(context)),
+                        ),
+                      ),
                     ),
                   ),
                   
                   const SizedBox(height: 8),
                   
-                  Text(
-                    pet.name,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
+                  // 펫 이름
+                  Flexible(
+                    flex: 1,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        pet.name,
+                        style: TextStyle(
+                          fontSize: _getNameFontSize(context),
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        textAlign: TextAlign.center,
+                      ),
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
                   
                   const SizedBox(height: 4),
                   
-                  Text(
-                    '${pet.speciesDisplayName} • ${pet.stageDisplayName}',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey.shade600,
+                  // 펫 정보
+                  Flexible(
+                    flex: 1,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        '${pet.speciesDisplayName} • ${pet.stageDisplayName}',
+                        style: TextStyle(
+                          fontSize: _getInfoFontSize(context),
+                          color: Colors.grey.shade600,
+                        ),
+                        maxLines: 1,
+                        textAlign: TextAlign.center,
+                      ),
                     ),
                   ),
                   
                   const SizedBox(height: 8),
                   
                   // 성장 정보
-                  if (canGrow) ...[
-                    Text(
-                      '다음 성장까지',
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: Colors.grey.shade500,
-                      ),
-                    ),
-                    Text(
-                      '${pet.pointsToNextStage} 포인트',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.orange.shade600,
-                      ),
-                    ),
-                  ] else ...[
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.purple.shade100,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        '최고 단계!',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.purple.shade700,
-                        ),
-                      ),
-                    ),
-                  ],
+                  Flexible(
+                    flex: 2,
+                    child: canGrow 
+                        ? Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  '다음 성장까지',
+                                  style: TextStyle(
+                                    fontSize: _getInfoFontSize(context) - 2,
+                                    color: Colors.grey.shade500,
+                                  ),
+                                ),
+                              ),
+                              FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  '${pet.pointsToNextStage} 포인트',
+                                  style: TextStyle(
+                                    fontSize: _getInfoFontSize(context),
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.orange.shade600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          )
+                        : FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.purple.shade100,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                '최고 단계!',
+                                style: TextStyle(
+                                  fontSize: _getInfoFontSize(context) - 2,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.purple.shade700,
+                                ),
+                              ),
+                            ),
+                          ),
+                  ),
                 ],
               ),
             ),
@@ -571,11 +729,14 @@ class _PetCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  child: Text(
-                    hasEnoughPoints ? '성장시키기' : '포인트 부족',
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      hasEnoughPoints ? '성장시키기' : '포인트 부족',
+                      style: TextStyle(
+                        fontSize: _getButtonFontSize(context),
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ),
@@ -597,6 +758,35 @@ class _AdoptionCard extends StatelessWidget {
     required this.onTap,
   });
 
+  // 반응형 크기 계산
+  double _getIconSize(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    if (screenWidth > 600) return 40.0;
+    if (screenWidth > 400) return 36.0;
+    return 32.0;
+  }
+
+  double _getNameFontSize(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    if (screenWidth > 600) return 15.0;
+    if (screenWidth > 400) return 13.0;
+    return 11.0;
+  }
+
+  double _getTagFontSize(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    if (screenWidth > 600) return 11.0;
+    if (screenWidth > 400) return 9.0;
+    return 8.0;
+  }
+
+  double _getCardPadding(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    if (screenWidth > 600) return 16.0;
+    if (screenWidth > 400) return 12.0;
+    return 8.0;
+  }
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -616,39 +806,62 @@ class _AdoptionCard extends StatelessWidget {
           ],
         ),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(_getCardPadding(context)),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(
-                petData['icon'],
-                style: const TextStyle(fontSize: 40),
+              // 펫 아이콘
+              Flexible(
+                flex: 3,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    petData['icon'],
+                    style: TextStyle(fontSize: _getIconSize(context)),
+                  ),
+                ),
               ),
               
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
               
-              Text(
-                petData['displayName'],
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
+              // 펫 이름
+              Flexible(
+                flex: 1,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    petData['displayName'],
+                    style: TextStyle(
+                      fontSize: _getNameFontSize(context),
+                      fontWeight: FontWeight.w600,
+                    ),
+                    maxLines: 1,
+                    textAlign: TextAlign.center,
+                  ),
                 ),
               ),
               
               const SizedBox(height: 4),
               
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.green.shade100,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  '무료 입양',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.green.shade700,
+              // 무료 입양 태그
+              Flexible(
+                flex: 1,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade100,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      '무료 입양',
+                      style: TextStyle(
+                        fontSize: _getTagFontSize(context),
+                        fontWeight: FontWeight.w600,
+                        color: Colors.green.shade700,
+                      ),
+                    ),
                   ),
                 ),
               ),
