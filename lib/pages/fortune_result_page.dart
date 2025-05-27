@@ -121,7 +121,7 @@ class _FortuneResultPageState extends State<FortuneResultPage>
         _selectedFortune = fortuneResult['fortuneMessage'] as String;
         _isTodayFortune = true;
         if (kDebugMode) {
-          print('오늘 이미 뽑은 운세를 발견했습니다: $_selectedFortune');
+          print('오늘 이미 받은 카드를 발견했습니다: $_selectedFortune');
         }
         _showTodayFortune();
       } else {
@@ -138,16 +138,16 @@ class _FortuneResultPageState extends State<FortuneResultPage>
             _currentUser = rewardResult['user'] as UserModel;
           });
           final pointsEarned = rewardResult['pointsEarned'] as int;
-          _showPointsEarnedSnackBar(pointsEarned, '운세');
+          _showPointsEarnedSnackBar(pointsEarned, '카드');
         } catch (e) {
           if (kDebugMode) {
-            print('운세 포인트 지급 실패: $e');
+            print('카드 포인트 지급 실패: $e');
           }
         }
       }
     } catch (e) {
       if (kDebugMode) {
-        print('오늘 운세 확인 실패: $e');
+        print('오늘 카드 확인 실패: $e');
       }
     }
   }
@@ -201,11 +201,11 @@ class _FortuneResultPageState extends State<FortuneResultPage>
     });
 
     try {
-      final shareText = '✨ MyLucky에서 뽑은 오늘의 운세 ✨\n\n$_selectedFortune\n\n🍀 MyLucky 앱에서 당신만의 행운을 찾아보세요!';
+      final shareText = '💝 MyLucky에서 받은 오늘의 카드 💝\n\n$_selectedFortune\n\n🌟 MyLucky 앱에서 매일 따뜻한 메시지를 받아보세요!';
       
       await Share.share(
         shareText,
-        subject: 'MyLucky 오늘의 운세',
+        subject: 'MyLucky 오늘의 카드',
       );
     } catch (e) {
       if (kDebugMode) {
@@ -279,7 +279,7 @@ class _FortuneResultPageState extends State<FortuneResultPage>
             ),
           ),
           title: Text(
-            '오늘의 운세',
+            '오늘의 카드',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w600,
@@ -371,7 +371,7 @@ class _FortuneResultPageState extends State<FortuneResultPage>
                                               ),
                                               const SizedBox(width: 6),
                                               Text(
-                                                '운세 공유하기',
+                                                '카드 공유하기',
                                                 style: TextStyle(
                                                   fontSize: 14,
                                                   fontWeight: FontWeight.w500,
@@ -491,7 +491,7 @@ class _FortuneResultPageState extends State<FortuneResultPage>
                 shape: BoxShape.circle,
               ),
               child: Icon(
-                Icons.auto_awesome,
+                Icons.favorite,
                 size: 20,
                 color: Colors.indigo.shade500,
               ),

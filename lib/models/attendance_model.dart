@@ -1,6 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../utils/utils.dart';
 
+// DateUtils 헬퍼 함수
+class _DateUtils {
+  static DateTime startOfDay(DateTime date) {
+    return DateTime(date.year, date.month, date.day);
+  }
+}
+
 class AttendanceModel {
   final String id;
   final DateTime date;
@@ -17,7 +24,7 @@ class AttendanceModel {
     required String id,
   }) {
     final now = DateTime.now();
-    final today = DateUtils.startOfDay(now);
+    final today = _DateUtils.startOfDay(now);
     return AttendanceModel(
       id: id,
       date: today,

@@ -6,6 +6,7 @@ import '../models/models.dart';
 
 // Services imports
 import '../services/user_service.dart';
+import '../services/challenge_service.dart';
 
 class MyHistoryPage extends StatefulWidget {
   final UserModel currentUser;
@@ -25,9 +26,9 @@ class _MyHistoryPageState extends State<MyHistoryPage>
   List<FortuneModel> _fortuneHistory = [];
   bool _isLoadingFortunes = true;
   
-  // 미션 기록
-  List<MissionModel> _missionHistory = [];
-  bool _isLoadingMissions = true;
+  // 챌린지 기록
+  List<UserChallenge> _challengeHistory = [];
+  bool _isLoadingChallenges = true;
   
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
@@ -54,7 +55,7 @@ class _MyHistoryPageState extends State<MyHistoryPage>
     ));
     
     _loadFortuneHistory();
-    _loadMissionHistory();
+    _loadChallengeHistory();
     _fadeController.forward();
   }
 
@@ -88,25 +89,25 @@ class _MyHistoryPageState extends State<MyHistoryPage>
     }
   }
 
-  // 미션 기록을 불러오는 함수
-  Future<void> _loadMissionHistory() async {
+  // 챌린지 기록을 불러오는 함수
+  Future<void> _loadChallengeHistory() async {
     try {
-      final history = await UserService.getUserMissionHistory(_currentUser.id);
+      final history = await ChallengeService.getUserChallengeHistory(_currentUser.id);
 
       setState(() {
-        _missionHistory = history;
-        _isLoadingMissions = false;
+        _challengeHistory = history;
+        _isLoadingChallenges = false;
       });
 
       if (kDebugMode) {
-        print('미션 기록 로드 완료: ${history.length}개');
+        print('챌린지 기록 로드 완료: ${history.length}개');
       }
     } catch (e) {
       if (kDebugMode) {
-        print('미션 기록 로드 실패: $e');
+        print('챌린지 기록 로드 실패: $e');
       }
       setState(() {
-        _isLoadingMissions = false;
+        _isLoadingChallenges = false;
       });
     }
   }
@@ -146,12 +147,12 @@ class _MyHistoryPageState extends State<MyHistoryPage>
           ),
           tabs: const [
             Tab(
-              icon: Icon(Icons.auto_awesome, size: 18),
-              text: '운세 기록',
+              icon: Icon(Icons.favorite, size: 18),
+              text: '카드 기록',
             ),
             Tab(
-              icon: Icon(Icons.assignment, size: 18),
-              text: '미션 기록',
+              icon: Icon(Icons.emoji_events, size: 18),
+              text: '챌린지 기록',
             ),
           ],
         ),
@@ -168,8 +169,8 @@ class _MyHistoryPageState extends State<MyHistoryPage>
               children: [
                 // 운세 기록 탭
                 _buildFortuneHistoryTab(),
-                // 미션 기록 탭
-                _buildMissionHistoryTab(),
+                // 챌린지 기록 탭
+                _buildChallengeHistoryTab(),
               ],
             ),
           ),
@@ -190,13 +191,13 @@ class _MyHistoryPageState extends State<MyHistoryPage>
             Row(
               children: [
                 Icon(
-                  Icons.auto_awesome,
+                  Icons.favorite,
                   color: Colors.indigo.shade400,
                   size: 20,
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  '운세 기록',
+                  '카드 기록',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w600,
@@ -209,7 +210,7 @@ class _MyHistoryPageState extends State<MyHistoryPage>
             const SizedBox(height: 4),
             
             Text(
-              '지금까지 뽑으신 모든 운세를 확인하세요',
+              '지금까지 받으신 모든 카드를 확인하세요',
               style: TextStyle(
                 fontSize: 12,
                 color: Colors.grey.shade600,
@@ -230,9 +231,9 @@ class _MyHistoryPageState extends State<MyHistoryPage>
               )
             else if (_fortuneHistory.isEmpty)
               _buildEmptyState(
-                icon: Icons.auto_awesome_outlined,
-                title: '아직 뽑은 운세가 없어요',
-                subtitle: '첫 번째 운세를 뽑아보세요!',
+                icon: Icons.favorite_outline,
+                title: '아직 받은 카드가 없어요',
+                subtitle: '첫 번째 카드를 받아보세요!',
                 color: Colors.indigo,
               )
             else
@@ -287,7 +288,7 @@ class _MyHistoryPageState extends State<MyHistoryPage>
                         
                         const SizedBox(height: 12),
                         
-                        // 운세 메시지
+                        // 카드 메시지
                         Container(
                           width: double.infinity,
                           padding: const EdgeInsets.all(12),
@@ -309,50 +310,6 @@ class _MyHistoryPageState extends State<MyHistoryPage>
                             ),
                           ),
                         ),
-                        
-                        // 미션
-                        if (fortune.mission.isNotEmpty) ...[
-                          const SizedBox(height: 10),
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.assignment,
-                                size: 12,
-                                color: Colors.orange.shade400,
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                '오늘의 미션',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.orange.shade600,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 6),
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: Colors.orange.shade50,
-                              borderRadius: BorderRadius.circular(6),
-                              border: Border.all(
-                                color: Colors.orange.shade100,
-                                width: 1,
-                              ),
-                            ),
-                            child: Text(
-                              fortune.mission,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.orange.shade700,
-                                height: 1.3,
-                              ),
-                            ),
-                          ),
-                        ],
                       ],
                     ),
                   );
@@ -364,7 +321,7 @@ class _MyHistoryPageState extends State<MyHistoryPage>
     );
   }
 
-  Widget _buildMissionHistoryTab() {
+  Widget _buildChallengeHistoryTab() {
     return SingleChildScrollView(
       physics: const ClampingScrollPhysics(),
       child: Padding(
@@ -376,13 +333,13 @@ class _MyHistoryPageState extends State<MyHistoryPage>
             Row(
               children: [
                 Icon(
-                  Icons.assignment,
+                  Icons.emoji_events,
                   color: Colors.orange.shade400,
                   size: 20,
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  '미션 기록',
+                  '챌린지 기록',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w600,
@@ -395,7 +352,7 @@ class _MyHistoryPageState extends State<MyHistoryPage>
             const SizedBox(height: 4),
             
             Text(
-              '완료하신 모든 미션을 확인하세요',
+              '참여하신 모든 챌린지를 확인하세요',
               style: TextStyle(
                 fontSize: 12,
                 color: Colors.grey.shade600,
@@ -404,8 +361,8 @@ class _MyHistoryPageState extends State<MyHistoryPage>
             
             const SizedBox(height: 16),
             
-            // 미션 기록 리스트
-            if (_isLoadingMissions)
+            // 챌린지 기록 리스트
+            if (_isLoadingChallenges)
               const Center(
                 child: Padding(
                   padding: EdgeInsets.all(32.0),
@@ -414,117 +371,120 @@ class _MyHistoryPageState extends State<MyHistoryPage>
                   ),
                 ),
               )
-            else if (_missionHistory.isEmpty)
+            else if (_challengeHistory.isEmpty)
               _buildEmptyState(
-                icon: Icons.assignment_outlined,
-                title: '아직 완료한 미션이 없어요',
-                subtitle: '첫 번째 미션을 완료해보세요!',
+                icon: Icons.emoji_events_outlined,
+                title: '아직 참여한 챌린지가 없어요',
+                subtitle: '첫 번째 챌린지를 시작해보세요!',
                 color: Colors.orange,
               )
             else
               ListView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                itemCount: _missionHistory.length,
+                itemCount: _challengeHistory.length,
                 itemBuilder: (context, index) {
-                  final mission = _missionHistory[index];
+                  final userChallenge = _challengeHistory[index];
                   
                   return Container(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    padding: const EdgeInsets.all(12),
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: Colors.orange.shade100,
+                        color: _getChallengeStatusColor(userChallenge).withOpacity(0.3),
                         width: 1,
                       ),
                     ),
-                    child: Row(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // 완료 아이콘
-                        Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: Colors.green.shade100,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            Icons.check,
-                            size: 14,
-                            color: Colors.green.shade600,
-                          ),
-                        ),
-                        
-                        const SizedBox(width: 10),
-                        
-                        // 미션 내용과 날짜
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                mission.mission,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.grey.shade800,
-                                ),
-                              ),
-                              const SizedBox(height: 3),
-                              Row(
+                        // 헤더 (이모지, 제목, 상태)
+                        Row(
+                          children: [
+                            Text(
+                              userChallenge.challenge.emoji,
+                              style: const TextStyle(fontSize: 20),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Icon(
-                                    Icons.calendar_today,
-                                    size: 10,
-                                    color: Colors.grey.shade500,
-                                  ),
-                                  const SizedBox(width: 3),
                                   Text(
-                                    mission.formattedDate,
+                                    userChallenge.challenge.title,
                                     style: TextStyle(
-                                      fontSize: 10,
-                                      color: Colors.grey.shade500,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.grey.shade800,
                                     ),
                                   ),
-                                  const SizedBox(width: 8),
-                                  Icon(
-                                    Icons.access_time,
-                                    size: 10,
-                                    color: Colors.grey.shade500,
-                                  ),
-                                  const SizedBox(width: 3),
+                                  const SizedBox(height: 2),
                                   Text(
-                                    mission.formattedCompletedTime,
+                                    '${userChallenge.completedDays}/${userChallenge.challenge.durationDays}일 완료',
                                     style: TextStyle(
-                                      fontSize: 10,
-                                      color: Colors.grey.shade500,
+                                      fontSize: 12,
+                                      color: Colors.grey.shade600,
                                     ),
                                   ),
                                 ],
                               ),
-                            ],
-                          ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: _getChallengeStatusColor(userChallenge).withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                userChallenge.status.displayName,
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: _getChallengeStatusColor(userChallenge),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                         
-                        // 상대적 날짜
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 3,
+                        const SizedBox(height: 12),
+                        
+                        // 진행률 바
+                        LinearProgressIndicator(
+                          value: userChallenge.progressPercentage,
+                          backgroundColor: Colors.grey.shade200,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            _getChallengeStatusColor(userChallenge),
                           ),
-                          decoration: BoxDecoration(
-                            color: Colors.orange.shade100,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            mission.relativeDateString,
-                            style: TextStyle(
-                              fontSize: 9,
-                              fontWeight: FontWeight.w500,
-                              color: Colors.orange.shade700,
+                          minHeight: 4,
+                        ),
+                        
+                        const SizedBox(height: 12),
+                        
+                        // 상세 정보
+                        Row(
+                          children: [
+                            _buildChallengeInfoChip(
+                              icon: Icons.calendar_today,
+                              label: '시작: ${_formatDate(userChallenge.startDate)}',
+                              color: Colors.blue.shade600,
                             ),
-                          ),
+                            const SizedBox(width: 8),
+                            if (userChallenge.endDate != null)
+                              _buildChallengeInfoChip(
+                                icon: Icons.event_available,
+                                label: '완료: ${_formatDate(userChallenge.endDate!)}',
+                                color: Colors.green.shade600,
+                              ),
+                            const Spacer(),
+                            _buildChallengeInfoChip(
+                              icon: Icons.stars,
+                              label: '${userChallenge.totalPointsEarned}P',
+                              color: Colors.amber.shade600,
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -535,6 +495,58 @@ class _MyHistoryPageState extends State<MyHistoryPage>
         ),
       ),
     );
+  }
+
+  Widget _buildChallengeInfoChip({
+    required IconData icon,
+    required String label,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 10,
+            color: color,
+          ),
+          const SizedBox(width: 3),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 9,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _getChallengeStatusColor(UserChallenge userChallenge) {
+    switch (userChallenge.status) {
+      case ChallengeStatus.completed:
+        return Colors.green.shade600;
+      case ChallengeStatus.inProgress:
+        return Colors.blue.shade600;
+      case ChallengeStatus.failed:
+        return Colors.red.shade600;
+      case ChallengeStatus.paused:
+        return Colors.orange.shade600;
+      default:
+        return Colors.grey.shade600;
+    }
+  }
+
+  String _formatDate(DateTime date) {
+    return '${date.month}/${date.day}';
   }
 
   Widget _buildEmptyState({

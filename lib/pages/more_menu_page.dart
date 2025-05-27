@@ -12,6 +12,15 @@ import 'my_history_page.dart';
 import 'my_forest_page.dart';
 import 'animal_collection_page.dart';
 
+enum MenuSection {
+  myStats,
+  ranking,
+  animalCollection,
+  myForest,
+  myHistory,
+  appInfo,
+}
+
 class MoreMenuPage extends StatefulWidget {
   final UserModel currentUser;
   
@@ -27,9 +36,10 @@ class _MoreMenuPageState extends State<MoreMenuPage>
   UserModel? _userStats;
   bool _isLoadingRankings = true;
   bool _isLoadingStats = true;
-  bool _isRefreshing = false; // 새로고침 중복 방지
+  bool _isRefreshing = false;
   
   late UserModel _currentUser;
+  MenuSection _selectedSection = MenuSection.myStats;
   
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
@@ -42,7 +52,7 @@ class _MoreMenuPageState extends State<MoreMenuPage>
     _currentUser = widget.currentUser;
     
     _fadeController = AnimationController(
-      duration: const Duration(milliseconds: 800),
+      duration: const Duration(milliseconds: 300),
       vsync: this,
     );
     
@@ -58,7 +68,6 @@ class _MoreMenuPageState extends State<MoreMenuPage>
     _loadUserStats();
     _fadeController.forward();
     
-    // 페이지 진입 시 한 번만 데이터 새로고침
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _refreshAllData();
     });
@@ -75,14 +84,13 @@ class _MoreMenuPageState extends State<MoreMenuPage>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
     if (state == AppLifecycleState.resumed && mounted && !_isRefreshing) {
-      // 앱이 다시 활성화될 때 데이터 새로고침 (중복 방지)
       _refreshAllData();
     }
   }
 
   // 모든 데이터 새로고침
   Future<void> _refreshAllData() async {
-    if (_isRefreshing) return; // 이미 새로고침 중이면 무시
+    if (_isRefreshing) return;
     
     _isRefreshing = true;
     
@@ -94,7 +102,6 @@ class _MoreMenuPageState extends State<MoreMenuPage>
     }
     
     try {
-      // 사용자 정보도 함께 새로고침
       final updatedUser = await UserService.getCurrentUser();
       if (updatedUser != null && mounted) {
         setState(() {
@@ -166,7 +173,6 @@ class _MoreMenuPageState extends State<MoreMenuPage>
         print('사용자 통계 로드 실패: $e');
       }
       
-      // 오류 발생 시에도 기본 통계 데이터 제공
       if (mounted) {
         setState(() {
           _userStats = UserModel.createNew(
@@ -183,6 +189,15 @@ class _MoreMenuPageState extends State<MoreMenuPage>
         });
       }
     }
+  }
+
+  // 메뉴 섹션 변경
+  void _selectSection(MenuSection section) {
+    setState(() {
+      _selectedSection = section;
+    });
+    _fadeController.reset();
+    _fadeController.forward();
   }
 
   // 앱 정보 다이얼로그
@@ -272,7 +287,6 @@ class _MoreMenuPageState extends State<MoreMenuPage>
   Widget build(BuildContext context) {
     return WillPopScope(
       onWillPop: () async {
-        // 뒤로 가기 시 업데이트된 사용자 정보 반환
         Navigator.pop(context, _currentUser);
         return false;
       },
@@ -287,7 +301,6 @@ class _MoreMenuPageState extends State<MoreMenuPage>
               color: Colors.indigo.shade400,
             ),
             onPressed: () {
-              // 뒤로 가기 시 업데이트된 사용자 정보 반환
               Navigator.pop(context, _currentUser);
             },
           ),
@@ -306,74 +319,264 @@ class _MoreMenuPageState extends State<MoreMenuPage>
             color: Color(0xFFFAFAFA),
           ),
           child: SafeArea(
-            child: FadeTransition(
-              opacity: _fadeAnimation,
-              child: RefreshIndicator(
-                onRefresh: _refreshAllData,
-                child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  child: Padding(
-                    padding: EdgeInsets.all(_getPadding(context)),
+            child: Row(
+              children: [
+                // 사이드바
+                _buildSidebar(),
+                // 메인 콘텐츠
+                Expanded(
+                  child: _buildMainContent(),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // 사이드바 빌드
+  Widget _buildSidebar() {
+    return Container(
+      width: 200,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Colors.teal.shade50,
+            Colors.blue.shade50,
+          ],
+        ),
+        border: Border(
+          right: BorderSide(
+            color: Colors.grey.shade200,
+            width: 1,
+          ),
+        ),
+      ),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // 내 통계 섹션
+          // 사용자 정보 헤더
                         Container(
-                          width: double.infinity,
-                          margin: const EdgeInsets.only(bottom: 16),
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: Colors.indigo.shade100,
+              color: Colors.white.withOpacity(0.8),
+              border: Border(
+                bottom: BorderSide(
+                  color: Colors.grey.shade200,
                               width: 1,
+                ),
                             ),
                           ),
                           child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
                                 children: [
                                   Container(
-                                    padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(12),
                                     decoration: BoxDecoration(
-                                      color: Colors.indigo.shade50,
+                    color: Colors.indigo.shade100,
                                       shape: BoxShape.circle,
                                     ),
                                     child: Icon(
                                       Icons.person,
-                                      size: 16,
-                                      color: Colors.indigo.shade500,
-                                    ),
+                    size: 24,
+                    color: Colors.indigo.shade600,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _currentUser.nickname,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey.shade800,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.shade100,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '${_currentUser.rewardPoints}P',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.amber.shade700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          // 메뉴 항목들
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              children: [
+                _buildSidebarItem(
+                  icon: Icons.analytics,
+                  title: '내 통계',
+                  section: MenuSection.myStats,
+                  color: Colors.indigo,
+                ),
+                _buildSidebarItem(
+                  icon: Icons.leaderboard,
+                  title: '랭킹',
+                  section: MenuSection.ranking,
+                  color: Colors.orange,
+                ),
+                _buildSidebarItem(
+                  icon: Icons.collections_bookmark,
+                  title: '동물 도감',
+                  section: MenuSection.animalCollection,
+                  color: Colors.green,
+                ),
+                _buildSidebarItem(
+                  icon: Icons.forest_outlined,
+                  title: '나의 숲',
+                  section: MenuSection.myForest,
+                  color: Colors.brown,
+                ),
+                _buildSidebarItem(
+                  icon: Icons.history,
+                  title: '내 기록',
+                  section: MenuSection.myHistory,
+                  color: Colors.purple,
+                ),
+                _buildSidebarItem(
+                  icon: Icons.info_outline,
+                  title: '앱 정보',
+                  section: MenuSection.appInfo,
+                  color: Colors.blue,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 사이드바 아이템 빌드
+  Widget _buildSidebarItem({
+    required IconData icon,
+    required String title,
+    required MenuSection section,
+    required Color color,
+  }) {
+    final isSelected = _selectedSection == section;
+    
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _selectSection(section),
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            decoration: BoxDecoration(
+              color: isSelected ? color.withOpacity(0.15) : Colors.transparent,
+              borderRadius: BorderRadius.circular(12),
+              border: isSelected ? Border.all(
+                color: color.withOpacity(0.3),
+                width: 1,
+              ) : null,
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  icon,
+                  size: 18,
+                  color: isSelected ? color : Colors.grey.shade600,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                      color: isSelected ? color : Colors.grey.shade700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // 메인 콘텐츠 빌드
+  Widget _buildMainContent() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      child: FadeTransition(
+        opacity: _fadeAnimation,
+        child: _buildSelectedContent(),
+      ),
+    );
+  }
+
+  // 선택된 콘텐츠 빌드
+  Widget _buildSelectedContent() {
+    switch (_selectedSection) {
+      case MenuSection.myStats:
+        return _buildMyStatsContent();
+      case MenuSection.ranking:
+        return _buildRankingContent();
+      case MenuSection.animalCollection:
+        return _buildAnimalCollectionContent();
+      case MenuSection.myForest:
+        return _buildMyForestContent();
+      case MenuSection.myHistory:
+        return _buildMyHistoryContent();
+      case MenuSection.appInfo:
+        return _buildAppInfoContent();
+    }
+  }
+
+  // 내 통계 콘텐츠
+  Widget _buildMyStatsContent() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(
+              Icons.analytics,
+              color: Colors.indigo.shade500,
+              size: 24,
                                   ),
                                   const SizedBox(width: 12),
                                   Text(
                                     '내 통계',
                                     style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
                                       color: Colors.indigo.shade600,
                                     ),
                                   ),
                                 ],
                               ),
-                              
-                              const SizedBox(height: 16),
+        const SizedBox(height: 20),
                               
                               if (_isLoadingStats)
-                                const Center(
-                                  child: CircularProgressIndicator(),
-                                )
-                              else ...[
-                                // 통계 그리드
-                                GridView.count(
-                                  shrinkWrap: true,
-                                  physics: const NeverScrollableScrollPhysics(),
-                                  crossAxisCount: _getStatsCrossAxisCount(context),
-                                  crossAxisSpacing: 8,
-                                  mainAxisSpacing: 8,
-                                  childAspectRatio: _getStatsChildAspectRatio(context),
+          const Center(child: CircularProgressIndicator())
+        else
+          Expanded(
+            child: GridView.count(
+              crossAxisCount: 2,
+              crossAxisSpacing: 16,
+              mainAxisSpacing: 16,
+              childAspectRatio: 1.5,
                                   children: [
                                     _buildStatCard(
                                       '총 점수',
@@ -388,9 +591,9 @@ class _MoreMenuPageState extends State<MoreMenuPage>
                                       Colors.green.shade300,
                                     ),
                                     _buildStatCard(
-                                      '뽑은 운세',
+                  '받은 카드',
                                       '${_userStats?.totalFortunes ?? 0}개',
-                                      Icons.auto_awesome,
+                  Icons.favorite,
                                       Colors.indigo.shade300,
                                     ),
                                     _buildStatCard(
@@ -400,110 +603,52 @@ class _MoreMenuPageState extends State<MoreMenuPage>
                                       Colors.blue.shade300,
                                     ),
                                   ],
-                                ),
-                                
-                                // 통계 정보가 모두 0인 경우 안내 메시지 표시
-                                if (_userStats != null && 
-                                    (_userStats!.score ?? 0) == 0 && 
-                                    (_userStats!.totalFortunes ?? 0) == 0 && 
-                                    (_userStats!.completedMissions ?? 0) == 0) ...[
-                                  const SizedBox(height: 12),
-                                  Container(
-                                    padding: const EdgeInsets.all(12),
-                                    decoration: BoxDecoration(
-                                      color: Colors.blue.shade50,
-                                      borderRadius: BorderRadius.circular(8),
-                                      border: Border.all(color: Colors.blue.shade200),
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        Icon(
-                                          Icons.info_outline,
-                                          size: 16,
-                                          color: Colors.blue.shade600,
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Expanded(
-                                          child: Text(
-                                            '아직 활동 기록이 없어요. 운세를 뽑고 미션을 완료해보세요!',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: Colors.blue.shade700,
-                                            ),
                                           ),
                                         ),
                                       ],
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ],
-                          ),
-                        ),
-                        
-                        // 랭킹 섹션
-                        Container(
-                          width: double.infinity,
-                          margin: const EdgeInsets.only(bottom: 16),
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: Colors.orange.shade100,
-                              width: 1,
-                            ),
-                          ),
-                          child: Column(
+    );
+  }
+
+  // 랭킹 콘텐츠
+  Widget _buildRankingContent() {
+    return Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Row(
                                 children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(8),
-                                    decoration: BoxDecoration(
-                                      color: Colors.orange.shade50,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: Icon(
+            Icon(
                                       Icons.leaderboard,
-                                      size: 16,
                                       color: Colors.orange.shade500,
-                                    ),
+              size: 24,
                                   ),
                                   const SizedBox(width: 12),
                                   Text(
                                     '랭킹',
                                     style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
                                       color: Colors.orange.shade600,
                                     ),
                                   ),
                                 ],
                               ),
-                              
-                              const SizedBox(height: 16),
+        const SizedBox(height: 20),
                               
                               if (_isLoadingRankings)
-                                const Center(
-                                  child: CircularProgressIndicator(),
-                                )
-                              else if (_rankings.isNotEmpty) ...[
-                                // 랭킹 리스트
-                                ListView.builder(
-                                  shrinkWrap: true,
-                                  physics: const NeverScrollableScrollPhysics(),
+          const Center(child: CircularProgressIndicator())
+        else if (_rankings.isNotEmpty)
+          Expanded(
+            child: ListView.builder(
                                   itemCount: _rankings.length,
                                   itemBuilder: (context, index) {
                                     final user = _rankings[index];
                                     
                                     return Container(
-                                      margin: const EdgeInsets.only(bottom: 6),
-                                      padding: const EdgeInsets.all(12),
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.all(16),
                                       decoration: BoxDecoration(
-                                        color: Colors.grey.shade50,
-                                        borderRadius: BorderRadius.circular(8),
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
                                         border: Border.all(
                                           color: user.isTopThree
                                               ? Colors.orange.shade200 
@@ -513,19 +658,18 @@ class _MoreMenuPageState extends State<MoreMenuPage>
                                       ),
                                       child: Row(
                                         children: [
-                                          // 순위 표시
                                           Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                             decoration: BoxDecoration(
                                               color: user.isTopThree 
                                                   ? Colors.orange.shade100 
                                                   : Colors.grey.shade100,
-                                              borderRadius: BorderRadius.circular(6),
+                          borderRadius: BorderRadius.circular(8),
                                             ),
                                             child: Text(
                                               user.rankDisplay,
                                               style: TextStyle(
-                                                fontSize: 10,
+                            fontSize: 12,
                                                 fontWeight: FontWeight.w600,
                                                 color: user.isTopThree 
                                                     ? Colors.orange.shade700 
@@ -534,28 +678,26 @@ class _MoreMenuPageState extends State<MoreMenuPage>
                                             ),
                                           ),
                                           
-                                          const SizedBox(width: 12),
+                      const SizedBox(width: 16),
                                           
-                                          // 닉네임
                                           Expanded(
                                             child: Text(
                                               user.displayNickname,
                                               style: TextStyle(
-                                                fontSize: 14,
+                            fontSize: 16,
                                                 fontWeight: FontWeight.w500,
                                                 color: Colors.grey.shade800,
                                               ),
                                             ),
                                           ),
                                           
-                                          // 점수와 연속 출석
                                           Column(
                                             crossAxisAlignment: CrossAxisAlignment.end,
                                             children: [
                                               Text(
                                                 user.formattedScore,
                                                 style: TextStyle(
-                                                  fontSize: 13,
+                              fontSize: 14,
                                                   fontWeight: FontWeight.w600,
                                                   color: Colors.orange.shade600,
                                                 ),
@@ -563,7 +705,7 @@ class _MoreMenuPageState extends State<MoreMenuPage>
                                               Text(
                                                 user.formattedConsecutiveDays,
                                                 style: TextStyle(
-                                                  fontSize: 10,
+                              fontSize: 12,
                                                   color: Colors.grey.shade500,
                                                 ),
                                               ),
@@ -574,86 +716,62 @@ class _MoreMenuPageState extends State<MoreMenuPage>
                                     );
                                   },
                                 ),
-                              ] else
-                                Center(
-                                  child: Text(
-                                    '랭킹 정보를 불러올 수 없습니다',
-                                    style: TextStyle(
-                                      color: Colors.grey.shade600,
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                        
-                        // 메뉴 섹션
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: Colors.blue.shade100,
-                              width: 1,
-                            ),
-                          ),
-                          child: Column(
+          )
+        else
+          const Center(
+            child: Text('랭킹 정보를 불러올 수 없습니다'),
+          ),
+      ],
+    );
+  }
+
+  // 동물 도감 콘텐츠
+  Widget _buildAnimalCollectionContent() {
+    return Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Row(
                                 children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(8),
-                                    decoration: BoxDecoration(
-                                      color: Colors.blue.shade50,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: Icon(
-                                      Icons.settings,
-                                      size: 16,
-                                      color: Colors.blue.shade500,
-                                    ),
+            Icon(
+              Icons.collections_bookmark,
+              color: Colors.green.shade500,
+              size: 24,
                                   ),
                                   const SizedBox(width: 12),
                                   Text(
-                                    '설정',
+              '동물 도감',
                                     style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.blue.shade600,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.green.shade600,
                                     ),
                                   ),
                                 ],
                               ),
-                              
+        const SizedBox(height: 20),
+        
+        Expanded(
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.collections_bookmark,
+                  size: 64,
+                  color: Colors.green.shade300,
+                ),
                               const SizedBox(height: 16),
-                              
-                              // 메뉴 항목들
-                              _buildMenuTile(
-                                icon: Icons.history,
-                                title: '내 기록',
-                                subtitle: '운세 기록과 미션 기록',
-                                color: Colors.indigo,
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => MyHistoryPage(currentUser: _currentUser),
-                                    ),
-                                  );
-                                },
-                              ),
-                              
-                              const SizedBox(height: 8),
-                              
-                              _buildMenuTile(
-                                icon: Icons.collections_bookmark,
-                                title: '📖 동물 도감',
-                                subtitle: '수집한 동물 친구들을 확인해보세요',
-                                color: Colors.indigo,
-                                onTap: () {
+                Text(
+                  '동물 도감을 확인하려면\n아래 버튼을 눌러주세요',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey.shade600,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: () {
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
@@ -661,145 +779,342 @@ class _MoreMenuPageState extends State<MoreMenuPage>
                                     ),
                                   );
                                 },
-                              ),
-                              
-                              const SizedBox(height: 8),
-                              
-                              _buildMenuTile(
-                                icon: Icons.forest_outlined,
-                                title: '🌲 나의 숲',
-                                subtitle: '내가 키운 나무들을 확인해보세요',
-                                color: Colors.brown,
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => MyForestPage(currentUser: _currentUser),
-                                    ),
-                                  );
-                                },
-                              ),
-                              
-                              const SizedBox(height: 8),
-                              
-                              _buildMenuTile(
-                                icon: Icons.info_outline,
-                                title: '앱 정보',
-                                subtitle: '버전 정보 및 개발진',
-                                color: Colors.purple,
-                                onTap: _showAppInfoDialog,
-                              ),
-                              
-                              const SizedBox(height: 8),
-                              
-                              _buildMenuTile(
-                                icon: Icons.refresh,
-                                title: '데이터 새로고침',
-                                subtitle: '랭킹 및 통계 업데이트',
-                                color: Colors.green,
-                                onTap: () async {
-                                  if (_isRefreshing) return; // 이미 새로고침 중이면 무시
-                                  
-                                  // 모든 데이터 새로고침 (사용자 정보 포함)
-                                  await _refreshAllData();
-                                  
-                                  // 새로고침 완료 알림
-                                  if (mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: const Text('데이터가 새로고침되었습니다!'),
-                                        backgroundColor: Colors.green.shade400,
-                                        behavior: SnackBarBehavior.floating,
-                                        duration: const Duration(seconds: 2),
-                                      ),
-                                    );
-                                  }
-                                },
-                              ),
-                              
-                              const SizedBox(height: 8),
-                              
-                              _buildMenuTile(
-                                icon: Icons.feedback_outlined,
-                                title: '피드백 보내기',
-                                subtitle: '개선사항이나 문의사항',
-                                color: Colors.orange,
-                                onTap: () {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: const Text('피드백 기능은 곧 추가될 예정입니다!'),
-                                      backgroundColor: Colors.orange.shade400,
-                                      behavior: SnackBarBehavior.floating,
-                                    ),
-                                  );
-                                },
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green.shade400,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
                   ),
+                  child: const Text('동물 도감 보기'),
                 ),
-              ),
+              ],
             ),
           ),
         ),
-      ),
+      ],
     );
   }
 
-  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade50,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: color.withOpacity(0.3),
-          width: 1,
-        ),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          // 아이콘
-          Icon(
-            icon,
-            size: 18,
-            color: color,
-          ),
-          const SizedBox(height: 6),
-          // 값
-          Flexible(
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                value,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: color,
-                ),
-                maxLines: 1,
-                textAlign: TextAlign.center,
+  // 나의 숲 콘텐츠
+  Widget _buildMyForestContent() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(
+              Icons.forest_outlined,
+              color: Colors.brown.shade500,
+              size: 24,
+            ),
+            const SizedBox(width: 12),
+            Text(
+              '나의 숲',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.brown.shade600,
               ),
+                              ),
+                            ],
+                          ),
+        const SizedBox(height: 20),
+        
+        Expanded(
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.forest_outlined,
+                  size: 64,
+                  color: Colors.brown.shade300,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  '나의 숲을 확인하려면\n아래 버튼을 눌러주세요',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey.shade600,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => MyForestPage(currentUser: _currentUser),
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.brown.shade400,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text('나의 숲 보기'),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 2),
-          // 제목
-          Flexible(
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                title,
-                style: TextStyle(
-                  fontSize: 10,
-                  color: Colors.grey.shade600,
+        ),
+      ],
+    );
+  }
+
+  // 내 기록 콘텐츠
+  Widget _buildMyHistoryContent() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(
+              Icons.history,
+              color: Colors.purple.shade500,
+              size: 24,
+            ),
+            const SizedBox(width: 12),
+            Text(
+              '내 기록',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.purple.shade600,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
+        
+        Expanded(
+          child: Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+                  Icons.history,
+                  size: 64,
+                  color: Colors.purple.shade300,
                 ),
-                maxLines: 1,
+                const SizedBox(height: 16),
+                Text(
+                  '카드 기록과 챌린지 기록을\n확인하려면 아래 버튼을 눌러주세요',
+                style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey.shade600,
+                ),
                 textAlign: TextAlign.center,
+              ),
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => MyHistoryPage(currentUser: _currentUser),
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.purple.shade400,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text('내 기록 보기'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // 앱 정보 콘텐츠
+  Widget _buildAppInfoContent() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(
+              Icons.info_outline,
+              color: Colors.blue.shade500,
+              size: 24,
+            ),
+            const SizedBox(width: 12),
+            Text(
+              '앱 정보',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.blue.shade600,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
+        
+        Expanded(
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.blue.shade100),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.auto_awesome,
+                            color: Colors.purple.shade600,
+                            size: 32,
+            ),
+            const SizedBox(width: 12),
+                          Text(
+                            'MyLucky',
+                            style: TextStyle(
+                              fontSize: 28,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.purple.shade700,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      
+                      _buildInfoRow('버전', '1.0.0'),
+                      const SizedBox(height: 12),
+                      _buildInfoRow('개발자', '정준철'),
+                      const SizedBox(height: 20),
+                      
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.purple.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                              '앱 소개',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.purple.shade700,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'MyLucky는 매일의 작은 행운을 발견하고, 긍정적인 습관을 만들어가는 앱입니다.',
+                    style: TextStyle(
+                      fontSize: 14,
+                                color: Colors.grey.shade700,
+                                height: 1.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      
+                      const SizedBox(height: 20),
+                      
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                  Text(
+                              '주요 기능',
+                    style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.blue.shade700,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            _buildFeatureItem('🍀', '매일 새로운 운세를 확인하세요'),
+                            _buildFeatureItem('🎯', '작은 미션으로 습관을 만들어보세요'),
+                            _buildFeatureItem('📊', '다른 사용자들과 랭킹을 경쟁해보세요'),
+                            _buildFeatureItem('🐾', '귀여운 동물들과 교감해보세요'),
+                            _buildFeatureItem('🌳', '집중하며 나무를 키워보세요'),
+                ],
+              ),
+            ),
+                    ],
+                  ),
+            ),
+          ],
+        ),
+      ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInfoRow(String label, String value) {
+    return Row(
+      children: [
+        Text(
+          '$label: ',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+            color: Colors.grey.shade600,
+          ),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: Colors.grey.shade800,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFeatureItem(String emoji, String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          Text(
+            emoji,
+            style: const TextStyle(fontSize: 16),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey.shade700,
+                height: 1.4,
               ),
             ),
           ),
@@ -808,108 +1123,46 @@ class _MoreMenuPageState extends State<MoreMenuPage>
     );
   }
 
-  Widget _buildMenuTile({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.grey.shade50,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: color.withOpacity(0.2),
-            width: 1,
-          ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                icon,
-                size: 16,
-                color: color,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.grey.shade800,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Colors.grey.shade500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Icon(
-              Icons.arrow_forward_ios,
-              size: 12,
-              color: Colors.grey.shade400,
-            ),
-          ],
+  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: color.withOpacity(0.3),
+          width: 1,
         ),
       ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            icon,
+            size: 24,
+            color: color,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey.shade600,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
     );
-  }
-
-  // 반응형 레이아웃을 위한 헬퍼 메서드들
-  int _getStatsCrossAxisCount(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    if (screenWidth > 600) {
-      return 4; // 태블릿에서는 4열
-    } else if (screenWidth > 400) {
-      return 2; // 일반적인 휴대폰
-    } else {
-      return 1; // 작은 화면
-    }
-  }
-
-  double _getStatsChildAspectRatio(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final crossAxisCount = _getStatsCrossAxisCount(context);
-    
-    if (screenWidth > 600) {
-      return 1.2; // 태블릿
-    } else if (crossAxisCount == 1) {
-      return 4.0; // 작은 화면에서는 가로로 넓게
-    } else {
-      return 2.8; // 일반적인 휴대폰
-    }
-  }
-
-  double _getPadding(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    if (screenWidth > 600) {
-      return 20.0; // 태블릿
-    } else if (screenWidth > 400) {
-      return 16.0; // 일반적인 휴대폰
-    } else {
-      return 12.0; // 작은 화면
-    }
   }
 }

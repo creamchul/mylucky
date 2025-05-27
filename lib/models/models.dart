@@ -10,3 +10,6 @@ export 'reward_model.dart';
 export 'animal_species.dart';
 export 'current_pet.dart';
 export 'collected_animal.dart'; 
+
+// 챌린지 시스템 모델들
+export 'challenge_model.dart'; 

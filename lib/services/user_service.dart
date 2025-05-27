@@ -268,7 +268,7 @@ class UserService {
       final fortune = await FirebaseService.getTodayFortune();
       
       if (fortune != null) {
-        // 오늘 이미 뽑은 운세가 있음
+        // 오늘 이미 받은 카드가 있음
         return {
           'hasFortuneToday': true,
           'fortuneMessage': fortune.message,
@@ -276,7 +276,7 @@ class UserService {
           'fortune': fortune,
         };
       } else {
-        // 오늘 아직 뽑지 않음
+        // 오늘 아직 받지 않음
         return {
           'hasFortuneToday': false,
           'fortuneMessage': '',
@@ -286,7 +286,7 @@ class UserService {
       }
     } catch (e) {
       if (kDebugMode) {
-        print('UserService: 오늘의 운세 확인 실패 - $e');
+        print('UserService: 오늘의 카드 확인 실패 - $e');
       }
       return {
         'hasFortuneToday': false,
@@ -297,7 +297,7 @@ class UserService {
     }
   }
 
-  /// 새로운 운세 저장
+  /// 새로운 카드 저장
   static Future<Map<String, dynamic>> saveNewFortune({
     required UserModel currentUser,
     required String message,
@@ -305,7 +305,7 @@ class UserService {
   }) async {
     if (kIsWeb) {
       if (kDebugMode) {
-        print('UserService: 웹 환경에서는 운세 저장 스킵');
+        print('UserService: 웹 환경에서는 카드 저장 스킵');
       }
       return {
         'fortune': FortuneModel.create(id: 'web_fortune', message: message, mission: mission),
@@ -326,7 +326,7 @@ class UserService {
       );
 
       if (kDebugMode) {
-        print('UserService: 새로운 운세 저장 완료');
+        print('UserService: 새로운 카드 저장 완료');
       }
       
       return {
@@ -335,7 +335,7 @@ class UserService {
       };
     } catch (e) {
       if (kDebugMode) {
-        print('UserService: 운세 저장 실패 - $e');
+        print('UserService: 카드 저장 실패 - $e');
       }
       rethrow;
     }
@@ -432,7 +432,7 @@ class UserService {
     }
   }
 
-  /// 사용자의 운세 이력 조회
+  /// 사용자의 카드 이력 조회
   static Future<List<FortuneModel>> getUserFortuneHistory(String userId) async {
     if (kIsWeb) {
       // 웹에서는 데모 데이터
@@ -454,7 +454,7 @@ class UserService {
       return await FirebaseService.getUserFortuneHistory(userId);
     } catch (e) {
       if (kDebugMode) {
-        print('UserService: 운세 이력 조회 실패 - $e');
+        print('UserService: 카드 이력 조회 실패 - $e');
       }
       return [];
     }
@@ -578,6 +578,118 @@ class UserService {
         RankingModel.fromUser('offline2', {'nickname': '로컬 마스터', 'score': 250, 'consecutiveDays': 12}, 2),
         RankingModel.fromUser('offline3', {'nickname': '단독 플레이어', 'score': 200, 'consecutiveDays': 10}, 3),
       ];
+    }
+  }
+
+  // ========================================
+  // 포인트 관리
+  // ========================================
+
+  /// 사용자에게 포인트 추가
+  static Future<UserModel> addPoints({
+    required UserModel currentUser,
+    required int points,
+    required String reason,
+  }) async {
+    if (kIsWeb) {
+      if (kDebugMode) {
+        print('UserService: 웹 환경에서 포인트 추가 - $points점');
+      }
+      
+      final updatedUser = currentUser.copyWith(
+        rewardPoints: currentUser.rewardPoints + points,
+        lastActiveDate: DateTime.now(),
+      ).withUpdatedScore();
+      
+      await updateUser(updatedUser);
+      return updatedUser;
+    }
+
+    try {
+      // Firebase에 포인트 업데이트
+      final updatedUser = await FirebaseService.updateUserPoints(
+        userId: currentUser.id,
+        pointsToAdd: points,
+        currentUser: currentUser,
+      );
+
+      // 로컬에도 저장
+      await updateUser(updatedUser);
+
+      if (kDebugMode) {
+        print('UserService: 포인트 추가 완료 - $points점 ($reason)');
+      }
+      
+      return updatedUser;
+    } catch (e) {
+      if (kDebugMode) {
+        print('UserService: 포인트 추가 실패 - $e');
+      }
+      
+      // Firebase 실패 시 로컬에만 저장
+      final updatedUser = currentUser.copyWith(
+        rewardPoints: currentUser.rewardPoints + points,
+        lastActiveDate: DateTime.now(),
+      ).withUpdatedScore();
+      
+      await updateUser(updatedUser);
+      return updatedUser;
+    }
+  }
+
+  /// 사용자 포인트 차감
+  static Future<UserModel> deductPoints({
+    required UserModel currentUser,
+    required int points,
+    required String reason,
+  }) async {
+    if (currentUser.rewardPoints < points) {
+      throw Exception('포인트가 부족합니다.');
+    }
+
+    if (kIsWeb) {
+      if (kDebugMode) {
+        print('UserService: 웹 환경에서 포인트 차감 - $points점');
+      }
+      
+      final updatedUser = currentUser.copyWith(
+        rewardPoints: currentUser.rewardPoints - points,
+        lastActiveDate: DateTime.now(),
+      ).withUpdatedScore();
+      
+      await updateUser(updatedUser);
+      return updatedUser;
+    }
+
+    try {
+      // Firebase에 포인트 업데이트
+      final updatedUser = await FirebaseService.updateUserPoints(
+        userId: currentUser.id,
+        pointsToAdd: -points,
+        currentUser: currentUser,
+      );
+
+      // 로컬에도 저장
+      await updateUser(updatedUser);
+
+      if (kDebugMode) {
+        print('UserService: 포인트 차감 완료 - $points점 ($reason)');
+      }
+      
+      return updatedUser;
+    } catch (e) {
+      if (kDebugMode) {
+        print('UserService: 포인트 차감 실패 - $e');
+      }
+      
+      // Firebase 실패 시 로컬에만 저장
+      final updatedUser = currentUser.copyWith(
+        rewardPoints: currentUser.rewardPoints - points,
+        lastActiveDate: DateTime.now(),
+      ).withUpdatedScore();
+      
+      await updateUser(updatedUser);
+      return updatedUser;
     }
   }
 

@@ -861,35 +861,13 @@ class _AnimalClickerPageState extends State<AnimalClickerPage>
           ),
           const SizedBox(height: 16),
           
-          // 클릭 파워 업그레이드
+          // 클릭 파워 업그레이드만 유지
           _buildUpgradeItem(
             '💪 클릭 파워',
             '클릭당 성장량 +0.5%',
             '${(_currentPet!.clickPower * 100).round()}P',
             'clickPower',
             (_currentUser?.rewardPoints ?? 0) >= (_currentPet!.clickPower * 100).round(),
-          ),
-          
-          const SizedBox(height: 8),
-          
-          // 자동 클릭 업그레이드
-          _buildUpgradeItem(
-            '🤖 자동 성장',
-            '초당 자동 성장 +0.1%',
-            '${(_currentPet!.autoClickLevel + 1) * 200}P',
-            'autoClick',
-            (_currentUser?.rewardPoints ?? 0) >= (_currentPet!.autoClickLevel + 1) * 200,
-          ),
-          
-          const SizedBox(height: 8),
-          
-          // 속도 부스트 업그레이드
-          _buildUpgradeItem(
-            '⚡ 속도 부스트',
-            '모든 효과 증가',
-            '${(_currentPet!.speedBoostLevel + 1) * 150}P',
-            'speedBoost',
-            (_currentUser?.rewardPoints ?? 0) >= (_currentPet!.speedBoostLevel + 1) * 150,
           ),
         ],
       ),
@@ -1123,6 +1101,12 @@ class _AnimalClickerPageState extends State<AnimalClickerPage>
     final rewardPoints = result['rewardPoints'] as int? ?? 0;
     final message = result['message'] as String? ?? '도감에 등록되었습니다!';
     
+    // 등록된 동물의 종족 정보 가져오기
+    AnimalSpecies? completedSpecies;
+    if (collectedAnimal != null) {
+      completedSpecies = AnimalData.getSpeciesById(collectedAnimal.speciesId);
+    }
+    
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -1158,22 +1142,27 @@ class _AnimalClickerPageState extends State<AnimalClickerPage>
             
             const SizedBox(height: 20),
             
-            // 동물 이미지
-            if (_currentSpecies != null)
+            // 동물 이미지 - 등록된 동물의 정보 사용
+            if (completedSpecies != null)
               Container(
-                width: 120,
-                height: 120,
+                width: 140,
+                height: 140,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: LinearGradient(
-                    colors: [
-                      Colors.green.shade200,
-                      Colors.blue.shade200,
-                    ],
+                    colors: completedSpecies.rarity == AnimalRarity.legendary
+                        ? [Colors.purple.shade200, Colors.pink.shade200]
+                        : completedSpecies.rarity == AnimalRarity.rare
+                            ? [Colors.blue.shade200, Colors.cyan.shade200]
+                            : [Colors.green.shade200, Colors.lime.shade200],
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.green.shade300,
+                      color: completedSpecies.rarity == AnimalRarity.legendary
+                          ? Colors.purple.shade300
+                          : completedSpecies.rarity == AnimalRarity.rare
+                              ? Colors.blue.shade300
+                              : Colors.green.shade300,
                       blurRadius: 20,
                       spreadRadius: 5,
                     ),
@@ -1181,13 +1170,38 @@ class _AnimalClickerPageState extends State<AnimalClickerPage>
                 ),
                 child: Center(
                   child: Text(
-                    _currentSpecies!.displayEmoji,
-                    style: const TextStyle(fontSize: 60),
+                    completedSpecies.displayEmoji,
+                    style: const TextStyle(fontSize: 70),
                   ),
                 ),
               ),
             
             const SizedBox(height: 16),
+            
+            // 동물 정보
+            if (completedSpecies != null) ...[
+              Text(
+                completedSpecies.rarityStars,
+                style: const TextStyle(fontSize: 20),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                completedSpecies.name,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '닉네임: ${collectedAnimal?.nickname ?? ""}',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey.shade600,
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
             
             // 보상 정보
             Container(

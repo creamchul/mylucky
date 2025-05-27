@@ -50,9 +50,7 @@ class CurrentPet {
       totalClicks: 0,
       comboCount: 0,
       stats: {
-        'clickPower': 1.0,      // 클릭당 성장량
-        'autoClickLevel': 0,    // 자동 클릭 레벨
-        'speedBoostLevel': 0,   // 성장 속도 부스트 레벨
+        'clickPower': 1.0,      // 클릭당 성장량만 유지
       },
     );
   }
@@ -62,18 +60,6 @@ class CurrentPet {
 
   // 클릭 파워 (업그레이드 가능)
   double get clickPower => (stats['clickPower'] as double?) ?? 1.0;
-
-  // 자동 클릭 레벨
-  int get autoClickLevel => (stats['autoClickLevel'] as int?) ?? 0;
-
-  // 성장 속도 부스트 레벨
-  int get speedBoostLevel => (stats['speedBoostLevel'] as int?) ?? 0;
-
-  // 자동 클릭 초당 성장량
-  double get autoGrowthPerSecond {
-    if (autoClickLevel == 0) return 0.0;
-    return autoClickLevel * 0.1; // 레벨당 0.1% 자동 성장
-  }
 
   // 기분 이모지
   String get moodEmoji {

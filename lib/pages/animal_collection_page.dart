@@ -359,7 +359,7 @@ class _AnimalCollectionPageState extends State<AnimalCollectionPage>
         crossAxisCount: 2,
         crossAxisSpacing: 12,
         mainAxisSpacing: 12,
-        childAspectRatio: 0.85,
+        childAspectRatio: 0.9, // 비율을 조금 늘려서 이미지가 더 잘 보이도록 함
       ),
       itemCount: filteredSpecies.length,
       itemBuilder: (context, index) {
@@ -440,13 +440,16 @@ class _AnimalCollectionPageState extends State<AnimalCollectionPage>
             Expanded(
               child: Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
                 child: Center(
+                  child: FittedBox(
+                    fit: BoxFit.contain,
                   child: Text(
                     isDiscovered
                         ? species.displayEmoji
                         : '❓',
-                    style: const TextStyle(fontSize: 48),
+                      style: const TextStyle(fontSize: 52),
+                    ),
                   ),
                 ),
               ),

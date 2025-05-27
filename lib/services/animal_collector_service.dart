@@ -237,36 +237,7 @@ class AnimalCollectorService {
     }
   }
 
-  /// 자동 성장 처리 (백그라운드에서 실행)
-  static Future<CurrentPet?> processAutoGrowth(String userId) async {
-    try {
-      final currentPet = await getCurrentPet(userId);
-      if (currentPet == null) return null;
 
-      final now = DateTime.now();
-      final timeDiff = now.difference(currentPet.lastInteraction).inSeconds;
-      
-      if (timeDiff > 0 && currentPet.autoGrowthPerSecond > 0) {
-        final autoGrowth = currentPet.autoGrowthPerSecond * timeDiff;
-        
-        final updatedPet = currentPet.copyWith(
-          growth: (currentPet.growth + autoGrowth).clamp(0, 100),
-          lastInteraction: now,
-          comboCount: 0, // 자동 성장 시 콤보 리셋
-        );
-
-        await saveCurrentPet(userId, updatedPet);
-        return updatedPet;
-      }
-
-      return currentPet;
-    } catch (e) {
-      if (kDebugMode) {
-        print('AnimalCollectorService: 자동 성장 처리 실패 - $e');
-      }
-      return null;
-    }
-  }
 
   /// 업그레이드 구매
   static Future<Map<String, dynamic>> purchaseUpgrade({
@@ -291,24 +262,6 @@ class AnimalCollectorService {
             throw Exception('포인트가 부족합니다. (필요: ${cost}P)');
           }
           newStats['clickPower'] = currentLevel + 0.5;
-          break;
-
-        case 'autoClick':
-          final currentLevel = (newStats['autoClickLevel'] as int? ?? 0);
-          cost = (currentLevel + 1) * 200;
-          if (currentUser.rewardPoints < cost) {
-            throw Exception('포인트가 부족합니다. (필요: ${cost}P)');
-          }
-          newStats['autoClickLevel'] = currentLevel + 1;
-          break;
-
-        case 'speedBoost':
-          final currentLevel = (newStats['speedBoostLevel'] as int? ?? 0);
-          cost = (currentLevel + 1) * 150;
-          if (currentUser.rewardPoints < cost) {
-            throw Exception('포인트가 부족합니다. (필요: ${cost}P)');
-          }
-          newStats['speedBoostLevel'] = currentLevel + 1;
           break;
 
         default:
@@ -355,11 +308,22 @@ class AnimalCollectorService {
         throw Exception('도감 등록 조건을 만족하지 않습니다. (성장도 100% 필요)');
       }
 
+      // 기존 도감에 있는지 확인
+      final collection = await getCollection(userId);
+      final existingAnimal = collection.where((animal) => animal.speciesId == currentPet.speciesId).firstOrNull;
+      final isNewSpecies = existingAnimal == null;
+      final isBetterRecord = existingAnimal != null && currentPet.totalClicks > existingAnimal.totalClicks;
+
       // 도감에 등록
       final collectedAnimal = await _addToCollection(userId, currentPet);
       
       // 완료 보상 (클릭 수에 따라)
-      final rewardPoints = (currentPet.totalClicks * 0.1).round() + 100; // 기본 100P + 클릭당 0.1P
+      int rewardPoints = (currentPet.totalClicks * 0.1).round() + 100; // 기본 100P + 클릭당 0.1P
+      
+      // 신규 동물 보너스
+      if (isNewSpecies) {
+        rewardPoints += 200; // 신규 동물 보너스 200P
+      }
       
       // 현재 펫 제거
       await removeCurrentPet(userId);
@@ -369,12 +333,24 @@ class AnimalCollectorService {
         rewardPoints: currentUser.rewardPoints + rewardPoints,
       );
 
+      // 메시지 생성
+      String message;
+      if (isNewSpecies) {
+        message = '🎉 새로운 동물 ${currentPet.nickname}이(가) 도감에 등록되었어요! (+${rewardPoints}P)';
+      } else if (isBetterRecord) {
+        message = '📈 ${currentPet.nickname}의 기록이 갱신되었어요! (+${rewardPoints}P)';
+      } else {
+        message = '✅ ${currentPet.nickname}이(가) 도감에 등록되었어요! (+${rewardPoints}P)';
+      }
+
       return {
         'success': true,
         'user': updatedUser,
         'collectedAnimal': collectedAnimal,
         'rewardPoints': rewardPoints,
-        'message': '🎉 ${currentPet.nickname}이(가) 도감에 등록되었어요! (+${rewardPoints}P)',
+        'message': message,
+        'isNewSpecies': isNewSpecies,
+        'isBetterRecord': isBetterRecord,
       };
     } catch (e) {
       return {
@@ -420,26 +396,57 @@ class AnimalCollectorService {
   // 도감 관리
   // ========================================
 
-  /// 도감에 동물 추가
+  /// 도감에 동물 추가 (중복 체크 포함)
   static Future<CollectedAnimal> _addToCollection(String userId, CurrentPet pet) async {
     try {
       final collection = await getCollection(userId);
       
-      // 새로운 동물 추가
-      final newEntry = CollectedAnimal.completed(
-        speciesId: pet.speciesId,
-        nickname: pet.nickname,
-        totalClicks: pet.totalClicks,
-      );
-      collection.add(newEntry);
+      // 이미 존재하는 동물인지 확인
+      final existingIndex = collection.indexWhere((animal) => animal.speciesId == pet.speciesId);
+      
+      CollectedAnimal resultEntry;
+      
+      if (existingIndex != -1) {
+        // 이미 존재하는 동물이면 업데이트 (더 좋은 기록으로)
+        final existing = collection[existingIndex];
+        final isNewRecordBetter = pet.totalClicks > existing.totalClicks;
+        
+        if (isNewRecordBetter) {
+          // 더 좋은 기록이면 업데이트
+          resultEntry = CollectedAnimal.completed(
+            speciesId: pet.speciesId,
+            nickname: pet.nickname,
+            totalClicks: pet.totalClicks,
+          );
+          collection[existingIndex] = resultEntry;
+          
+          if (kDebugMode) {
+            print('AnimalCollectorService: 도감 기록 업데이트 - ${pet.nickname} (클릭: ${existing.totalClicks} → ${pet.totalClicks})');
+          }
+        } else {
+          // 기존 기록이 더 좋으면 기존 것 유지
+          resultEntry = existing;
+          
+          if (kDebugMode) {
+            print('AnimalCollectorService: 기존 도감 기록 유지 - ${existing.nickname} (클릭: ${pet.totalClicks} < ${existing.totalClicks})');
+          }
+        }
+      } else {
+        // 새로운 동물이면 추가
+        resultEntry = CollectedAnimal.completed(
+          speciesId: pet.speciesId,
+          nickname: pet.nickname,
+          totalClicks: pet.totalClicks,
+        );
+        collection.add(resultEntry);
+        
+        if (kDebugMode) {
+          print('AnimalCollectorService: 새로운 동물 도감에 추가 - ${pet.nickname}');
+        }
+      }
 
       await _saveCollection(userId, collection);
-      
-      if (kDebugMode) {
-        print('AnimalCollectorService: 도감에 추가 완료 - ${pet.nickname}');
-      }
-      
-      return newEntry;
+      return resultEntry;
     } catch (e) {
       if (kDebugMode) {
         print('AnimalCollectorService: 도감 추가 실패 - $e');

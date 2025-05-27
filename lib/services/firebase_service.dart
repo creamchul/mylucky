@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import '../models/models.dart';
+import '../data/mission_data.dart';
 
 class FirebaseService {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -609,6 +610,136 @@ class FirebaseService {
     } catch (e) {
       if (kDebugMode) {
         print('Firebase: 포인트 사용 내역 조회 실패 - $e');
+      }
+      rethrow;
+    }
+  }
+
+  // ========================================
+  // 챌린지 관련 기능
+  // ========================================
+
+  /// 새로운 챌린지 시작
+  static Future<UserChallenge> startChallenge({
+    required String userId,
+    required Challenge challenge,
+  }) async {
+    try {
+      final challengeRef = await _firestore.collection('userChallenges').add({});
+      final userChallenge = UserChallenge.start(
+        id: challengeRef.id,
+        userId: userId,
+        challenge: challenge,
+      );
+      
+      await challengeRef.set(userChallenge.toFirestore());
+
+      if (kDebugMode) {
+        print('Firebase: 챌린지 시작 완료 - ${challenge.title}');
+      }
+      
+      return userChallenge;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Firebase: 챌린지 시작 실패 - $e');
+      }
+      rethrow;
+    }
+  }
+
+  /// 사용자 챌린지 업데이트
+  static Future<void> updateUserChallenge(UserChallenge userChallenge) async {
+    try {
+      final challengeRef = _firestore.collection('userChallenges').doc(userChallenge.id);
+      await challengeRef.update(userChallenge.toFirestore());
+
+      if (kDebugMode) {
+        print('Firebase: 챌린지 업데이트 완료 - ${userChallenge.challenge.title}');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Firebase: 챌린지 업데이트 실패 - $e');
+      }
+      rethrow;
+    }
+  }
+
+  /// 사용자의 활성 챌린지 목록 조회
+  static Future<List<UserChallenge>> getUserActiveChallenges(String userId) async {
+    try {
+      final query = await _firestore
+          .collection('userChallenges')
+          .where('userId', isEqualTo: userId)
+          .where('status', isEqualTo: 'inProgress')
+          .orderBy('startDate', descending: true)
+          .get();
+
+      final challenges = query.docs.map((doc) {
+        return UserChallenge.fromFirestore(doc.id, doc.data());
+      }).toList();
+
+      if (kDebugMode) {
+        print('Firebase: 활성 챌린지 조회 완료 - ${challenges.length}개');
+      }
+
+      return challenges;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Firebase: 활성 챌린지 조회 실패 - $e');
+      }
+      rethrow;
+    }
+  }
+
+  /// 사용자의 모든 챌린지 이력 조회
+  static Future<List<UserChallenge>> getUserChallengeHistory(String userId, {int limit = 20}) async {
+    try {
+      final query = await _firestore
+          .collection('userChallenges')
+          .where('userId', isEqualTo: userId)
+          .orderBy('createdAt', descending: true)
+          .limit(limit)
+          .get();
+
+      final challenges = query.docs.map((doc) {
+        return UserChallenge.fromFirestore(doc.id, doc.data());
+      }).toList();
+
+      if (kDebugMode) {
+        print('Firebase: 챌린지 이력 조회 완료 - ${challenges.length}개');
+      }
+
+      return challenges;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Firebase: 챌린지 이력 조회 실패 - $e');
+      }
+      rethrow;
+    }
+  }
+
+  /// 사용자의 완료된 챌린지 목록 조회
+  static Future<List<UserChallenge>> getUserCompletedChallenges(String userId) async {
+    try {
+      final query = await _firestore
+          .collection('userChallenges')
+          .where('userId', isEqualTo: userId)
+          .where('status', isEqualTo: 'completed')
+          .orderBy('endDate', descending: true)
+          .get();
+
+      final challenges = query.docs.map((doc) {
+        return UserChallenge.fromFirestore(doc.id, doc.data());
+      }).toList();
+
+      if (kDebugMode) {
+        print('Firebase: 완료된 챌린지 조회 완료 - ${challenges.length}개');
+      }
+
+      return challenges;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Firebase: 완료된 챌린지 조회 실패 - $e');
       }
       rethrow;
     }
