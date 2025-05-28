@@ -1,7 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import '../models/models.dart';
-import '../data/mission_data.dart';
+import '../models/todo_item_model.dart';
+import '../models/habit_tracker_model.dart';
+import '../models/challenge_model.dart';
 
 class FirebaseService {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -616,136 +618,6 @@ class FirebaseService {
   }
 
   // ========================================
-  // 챌린지 관련 기능
-  // ========================================
-
-  /// 새로운 챌린지 시작
-  static Future<UserChallenge> startChallenge({
-    required String userId,
-    required Challenge challenge,
-  }) async {
-    try {
-      final challengeRef = await _firestore.collection('userChallenges').add({});
-      final userChallenge = UserChallenge.start(
-        id: challengeRef.id,
-        userId: userId,
-        challenge: challenge,
-      );
-      
-      await challengeRef.set(userChallenge.toFirestore());
-
-      if (kDebugMode) {
-        print('Firebase: 챌린지 시작 완료 - ${challenge.title}');
-      }
-      
-      return userChallenge;
-    } catch (e) {
-      if (kDebugMode) {
-        print('Firebase: 챌린지 시작 실패 - $e');
-      }
-      rethrow;
-    }
-  }
-
-  /// 사용자 챌린지 업데이트
-  static Future<void> updateUserChallenge(UserChallenge userChallenge) async {
-    try {
-      final challengeRef = _firestore.collection('userChallenges').doc(userChallenge.id);
-      await challengeRef.update(userChallenge.toFirestore());
-
-      if (kDebugMode) {
-        print('Firebase: 챌린지 업데이트 완료 - ${userChallenge.challenge.title}');
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print('Firebase: 챌린지 업데이트 실패 - $e');
-      }
-      rethrow;
-    }
-  }
-
-  /// 사용자의 활성 챌린지 목록 조회
-  static Future<List<UserChallenge>> getUserActiveChallenges(String userId) async {
-    try {
-      final query = await _firestore
-          .collection('userChallenges')
-          .where('userId', isEqualTo: userId)
-          .where('status', isEqualTo: 'inProgress')
-          .orderBy('startDate', descending: true)
-          .get();
-
-      final challenges = query.docs.map((doc) {
-        return UserChallenge.fromFirestore(doc.id, doc.data());
-      }).toList();
-
-      if (kDebugMode) {
-        print('Firebase: 활성 챌린지 조회 완료 - ${challenges.length}개');
-      }
-
-      return challenges;
-    } catch (e) {
-      if (kDebugMode) {
-        print('Firebase: 활성 챌린지 조회 실패 - $e');
-      }
-      rethrow;
-    }
-  }
-
-  /// 사용자의 모든 챌린지 이력 조회
-  static Future<List<UserChallenge>> getUserChallengeHistory(String userId, {int limit = 20}) async {
-    try {
-      final query = await _firestore
-          .collection('userChallenges')
-          .where('userId', isEqualTo: userId)
-          .orderBy('createdAt', descending: true)
-          .limit(limit)
-          .get();
-
-      final challenges = query.docs.map((doc) {
-        return UserChallenge.fromFirestore(doc.id, doc.data());
-      }).toList();
-
-      if (kDebugMode) {
-        print('Firebase: 챌린지 이력 조회 완료 - ${challenges.length}개');
-      }
-
-      return challenges;
-    } catch (e) {
-      if (kDebugMode) {
-        print('Firebase: 챌린지 이력 조회 실패 - $e');
-      }
-      rethrow;
-    }
-  }
-
-  /// 사용자의 완료된 챌린지 목록 조회
-  static Future<List<UserChallenge>> getUserCompletedChallenges(String userId) async {
-    try {
-      final query = await _firestore
-          .collection('userChallenges')
-          .where('userId', isEqualTo: userId)
-          .where('status', isEqualTo: 'completed')
-          .orderBy('endDate', descending: true)
-          .get();
-
-      final challenges = query.docs.map((doc) {
-        return UserChallenge.fromFirestore(doc.id, doc.data());
-      }).toList();
-
-      if (kDebugMode) {
-        print('Firebase: 완료된 챌린지 조회 완료 - ${challenges.length}개');
-      }
-
-      return challenges;
-    } catch (e) {
-      if (kDebugMode) {
-        print('Firebase: 완료된 챌린지 조회 실패 - $e');
-      }
-      rethrow;
-    }
-  }
-
-  // ========================================
   // 동물 콜렉터 관련 기능 (새로운 시스템)
   // ========================================
   
@@ -785,6 +657,240 @@ class FirebaseService {
     } catch (e) {
       if (kDebugMode) {
         print('Firebase: 컬렉션 데이터 수 조회 실패 - $e');
+      }
+      rethrow;
+    }
+  }
+
+  // ========================================
+  // 투두 관련 기능 (새로 추가)
+  // ========================================
+
+  /// 투두 생성
+  static Future<void> createTodo(TodoItemModel todo) async {
+    try {
+      await _firestore.collection('todos').doc(todo.id).set(todo.toFirestore());
+
+      if (kDebugMode) {
+        print('Firebase: 투두 생성 완료 - ${todo.title}');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Firebase: 투두 생성 실패 - $e');
+      }
+      rethrow;
+    }
+  }
+
+  /// 사용자의 투두 목록 조회
+  static Future<List<TodoItemModel>> getUserTodos(String userId) async {
+    try {
+      final query = await _firestore
+          .collection('todos')
+          .where('userId', isEqualTo: userId)
+          .orderBy('createdAt', descending: true)
+          .get();
+
+      final todos = query.docs.map((doc) {
+        return TodoItemModel.fromFirestore(doc.id, doc.data());
+      }).toList();
+
+      if (kDebugMode) {
+        print('Firebase: 사용자 투두 목록 조회 완료 - ${todos.length}개');
+      }
+
+      return todos;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Firebase: 사용자 투두 목록 조회 실패 - $e');
+      }
+      rethrow;
+    }
+  }
+
+  /// 투두 업데이트
+  static Future<void> updateTodo(TodoItemModel todo) async {
+    try {
+      await _firestore.collection('todos').doc(todo.id).update(todo.toFirestore());
+
+      if (kDebugMode) {
+        print('Firebase: 투두 업데이트 완료 - ${todo.title}');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Firebase: 투두 업데이트 실패 - $e');
+      }
+      rethrow;
+    }
+  }
+
+  /// 투두 삭제
+  static Future<void> deleteTodo(String todoId) async {
+    try {
+      await _firestore.collection('todos').doc(todoId).delete();
+
+      if (kDebugMode) {
+        print('Firebase: 투두 삭제 완료 - $todoId');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Firebase: 투두 삭제 실패 - $e');
+      }
+      rethrow;
+    }
+  }
+
+  // ========================================
+  // 습관 추적기 관련 기능 (새로 추가)
+  // ========================================
+
+  /// 습관 추적기 생성
+  static Future<void> createHabitTracker(HabitTrackerModel tracker) async {
+    try {
+      await _firestore.collection('habitTrackers').doc(tracker.habitId).set(tracker.toMap());
+
+      if (kDebugMode) {
+        print('Firebase: 습관 추적기 생성 완료 - ${tracker.habitId}');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Firebase: 습관 추적기 생성 실패 - $e');
+      }
+      rethrow;
+    }
+  }
+
+  /// 사용자의 습관 추적기 목록 조회
+  static Future<List<HabitTrackerModel>> getUserHabitTrackers(String userId) async {
+    try {
+      final query = await _firestore
+          .collection('habitTrackers')
+          .where('userId', isEqualTo: userId)
+          .orderBy('createdAt', descending: true)
+          .get();
+
+      final trackers = query.docs.map((doc) {
+        return HabitTrackerModel.fromMap(doc.data());
+      }).toList();
+
+      if (kDebugMode) {
+        print('Firebase: 사용자 습관 추적기 목록 조회 완료 - ${trackers.length}개');
+      }
+
+      return trackers;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Firebase: 사용자 습관 추적기 목록 조회 실패 - $e');
+      }
+      rethrow;
+    }
+  }
+
+  /// 습관 추적기 업데이트
+  static Future<void> updateHabitTracker(HabitTrackerModel tracker) async {
+    try {
+      await _firestore.collection('habitTrackers').doc(tracker.habitId).update(tracker.toMap());
+
+      if (kDebugMode) {
+        print('Firebase: 습관 추적기 업데이트 완료 - ${tracker.habitId}');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Firebase: 습관 추적기 업데이트 실패 - $e');
+      }
+      rethrow;
+    }
+  }
+
+  /// 습관 추적기 삭제
+  static Future<void> deleteHabitTracker(String habitId) async {
+    try {
+      await _firestore.collection('habitTrackers').doc(habitId).delete();
+
+      if (kDebugMode) {
+        print('Firebase: 습관 추적기 삭제 완료 - $habitId');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Firebase: 습관 추적기 삭제 실패 - $e');
+      }
+      rethrow;
+    }
+  }
+
+  // ========================================
+  // 챌린지 관련 기능 (Phase 3 추가)
+  // ========================================
+
+  /// 챌린지 생성
+  static Future<void> createChallenge(ChallengeModel challenge) async {
+    try {
+      await _firestore.collection('challenges').doc(challenge.id).set(challenge.toMap());
+
+      if (kDebugMode) {
+        print('Firebase: 챌린지 생성 완료 - ${challenge.title}');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Firebase: 챌린지 생성 실패 - $e');
+      }
+      rethrow;
+    }
+  }
+
+  /// 사용자의 챌린지 목록 조회
+  static Future<List<ChallengeModel>> getUserChallenges(String userId) async {
+    try {
+      final query = await _firestore
+          .collection('challenges')
+          .where('userId', isEqualTo: userId)
+          .orderBy('createdAt', descending: true)
+          .get();
+
+      final challenges = query.docs.map((doc) {
+        return ChallengeModel.fromMap(doc.data());
+      }).toList();
+
+      if (kDebugMode) {
+        print('Firebase: 사용자 챌린지 목록 조회 완료 - ${challenges.length}개');
+      }
+
+      return challenges;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Firebase: 사용자 챌린지 목록 조회 실패 - $e');
+      }
+      rethrow;
+    }
+  }
+
+  /// 챌린지 업데이트
+  static Future<void> updateChallenge(ChallengeModel challenge) async {
+    try {
+      await _firestore.collection('challenges').doc(challenge.id).update(challenge.toMap());
+
+      if (kDebugMode) {
+        print('Firebase: 챌린지 업데이트 완료 - ${challenge.title}');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Firebase: 챌린지 업데이트 실패 - $e');
+      }
+      rethrow;
+    }
+  }
+
+  /// 챌린지 삭제
+  static Future<void> deleteChallenge(String challengeId) async {
+    try {
+      await _firestore.collection('challenges').doc(challengeId).delete();
+
+      if (kDebugMode) {
+        print('Firebase: 챌린지 삭제 완료 - $challengeId');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Firebase: 챌린지 삭제 실패 - $e');
       }
       rethrow;
     }

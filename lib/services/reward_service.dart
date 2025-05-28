@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import '../models/models.dart';
+import '../models/todo_item_model.dart';
 import 'firebase_service.dart';
 
 class RewardService {
@@ -238,6 +239,40 @@ class RewardService {
       }
       rethrow;
     }
+  }
+  
+  /// 투두 완료 보상 지급 (포인트 지급 비활성화)
+  static Future<Map<String, dynamic>> giveTodoReward({
+    required UserModel currentUser,
+    required TodoItemModel todo,
+  }) async {
+    // 사용자가 직접 생성한 할일에 대해서는 포인트를 지급하지 않음
+    if (kDebugMode) {
+      print('RewardService: 사용자 생성 투두 - 포인트 지급 안함');
+    }
+    
+    return {
+      'user': currentUser,
+      'pointsEarned': 0,
+      'totalPoints': currentUser.rewardPoints,
+    };
+  }
+  
+  /// 투두 완료 취소 시 포인트 차감 (포인트 차감 비활성화)
+  static Future<Map<String, dynamic>> deductTodoReward({
+    required UserModel currentUser,
+    required TodoItemModel todo,
+  }) async {
+    // 사용자가 직접 생성한 할일에 대해서는 포인트를 차감하지 않음
+    if (kDebugMode) {
+      print('RewardService: 사용자 생성 투두 - 포인트 차감 안함');
+    }
+    
+    return {
+      'user': currentUser,
+      'pointsDeducted': 0,
+      'totalPoints': currentUser.rewardPoints,
+    };
   }
   
   // ========================================

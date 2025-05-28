@@ -24,6 +24,8 @@ import 'my_history_page.dart';
 import 'animal_collection_page.dart';
 import 'my_stats_page.dart';
 import 'ranking_page.dart';
+import 'habit_dashboard_page.dart';
+import 'todo_list_page.dart';
 // 아직 분리되지 않은 페이지들 - 임시로 main.dart에서 가져옴 (나중에 분리)
 // import '../main.dart' show MoreMenuPage;
 
@@ -795,7 +797,7 @@ class _MyLuckyHomePageState extends State<MyLuckyHomePage> with WidgetsBindingOb
           _buildFocusButton(),
           _buildPetCareButton(),
           _buildFortuneButton(),
-          _buildMissionButton(),
+          _buildTodoButton(),
           const SizedBox(height: 24),
           
           Text(
@@ -936,7 +938,7 @@ class _MyLuckyHomePageState extends State<MyLuckyHomePage> with WidgetsBindingOb
     );
   }
 
-  Widget _buildMissionButton() {
+  Widget _buildTodoButton() {
     return Container(
       width: double.infinity,
       height: 88,
@@ -944,25 +946,19 @@ class _MyLuckyHomePageState extends State<MyLuckyHomePage> with WidgetsBindingOb
       child: ElevatedButton(
         onPressed: () async {
           if (_currentUser != null) {
-            final result = await Navigator.push(
+            Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => MissionPage(currentUser: _currentUser!),
+                builder: (context) => TodoListPage(currentUser: _currentUser!),
               ),
             );
-             if (result != null && result is UserModel) {
-              final refreshedUser = await UserService.getCurrentUser();
-              setState(() {
-                _currentUser = refreshedUser ?? result;
-              });
-            }
           }
         },
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.orange.shade300,
+          backgroundColor: Colors.purple.shade300,
           foregroundColor: Colors.white,
           elevation: 2,
-          shadowColor: Colors.orange.withOpacity(0.2),
+          shadowColor: Colors.purple.withOpacity(0.2),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
@@ -971,11 +967,11 @@ class _MyLuckyHomePageState extends State<MyLuckyHomePage> with WidgetsBindingOb
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.emoji_events, size: 28),
+            Icon(Icons.check_circle_outline, size: 28),
             SizedBox(height: 4),
-                            Text('챌린지', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+            Text('오늘의 루틴', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
             SizedBox(height: 1),
-            Text('꾸준한 도전으로 성장하기', style: TextStyle(fontSize: 10, color: Colors.white70)),
+            Text('체계적인 할일 관리와 습관 형성', style: TextStyle(fontSize: 10, color: Colors.white70)),
           ],
         ),
       ),

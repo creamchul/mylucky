@@ -41,9 +41,14 @@ class AppColors {
   static Color get blue600 => Colors.blue.shade600;
   static Color get blue700 => Colors.blue.shade700;
   
+  static Color get grey50 => Colors.grey.shade50;
+  static Color get grey200 => Colors.grey.shade200;
   static Color get grey400 => Colors.grey.shade400;
   static Color get grey500 => Colors.grey.shade500;
   static Color get grey600 => Colors.grey.shade600;
   static Color get grey700 => Colors.grey.shade700;
   static Color get grey800 => Colors.grey.shade800;
+  
+  static Color get yellow600 => Colors.yellow.shade600;
+  static Color get red600 => Colors.red.shade600;
 }

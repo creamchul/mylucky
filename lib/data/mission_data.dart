@@ -164,7 +164,7 @@ class ChallengeData {
     // 🎯 생산성 향상 챌린지
     Challenge(
       id: 'todo_completion',
-      title: '투두리스트 완성',
+      title: '오늘의 루틴 완성',
       description: '매일 계획한 할 일 3개를 모두 완료해보세요',
       category: ChallengeCategory.productivity,
       difficulty: ChallengeDifficulty.medium,
