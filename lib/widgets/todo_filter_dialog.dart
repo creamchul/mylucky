@@ -6,6 +6,12 @@ import '../constants/app_colors.dart';
 // Models imports
 import '../models/models.dart';
 
+// Services imports
+import '../services/todo_service.dart';
+
+// Widgets imports
+import 'tag_management_dialog.dart';
+
 /// 투두 필터 상태 클래스
 class TodoFilterState {
   final DateTime? startDate;
@@ -15,6 +21,7 @@ class TodoFilterState {
   final Priority? priority;
   final Difficulty? difficulty;
   final bool? isCompleted;
+  final List<String> tags;
 
   const TodoFilterState({
     this.startDate,
@@ -24,6 +31,7 @@ class TodoFilterState {
     this.priority,
     this.difficulty,
     this.isCompleted,
+    this.tags = const [],
   });
 
   TodoFilterState copyWith({
@@ -34,6 +42,7 @@ class TodoFilterState {
     Priority? priority,
     Difficulty? difficulty,
     bool? isCompleted,
+    List<String>? tags,
     bool clearStartDate = false,
     bool clearEndDate = false,
     bool clearType = false,
@@ -41,6 +50,7 @@ class TodoFilterState {
     bool clearPriority = false,
     bool clearDifficulty = false,
     bool clearIsCompleted = false,
+    bool clearTags = false,
   }) {
     return TodoFilterState(
       startDate: clearStartDate ? null : (startDate ?? this.startDate),
@@ -50,6 +60,7 @@ class TodoFilterState {
       priority: clearPriority ? null : (priority ?? this.priority),
       difficulty: clearDifficulty ? null : (difficulty ?? this.difficulty),
       isCompleted: clearIsCompleted ? null : (isCompleted ?? this.isCompleted),
+      tags: clearTags ? const [] : (tags ?? this.tags),
     );
   }
 
@@ -60,7 +71,8 @@ class TodoFilterState {
            category != null ||
            priority != null ||
            difficulty != null ||
-           isCompleted != null;
+           isCompleted != null ||
+           tags.isNotEmpty;
   }
 
   bool get isEmpty => !hasAnyFilter;
@@ -69,11 +81,13 @@ class TodoFilterState {
 class TodoFilterDialog extends StatefulWidget {
   final TodoFilterState initialFilter;
   final Function(TodoFilterState) onFilterApplied;
+  final String userId;
 
   const TodoFilterDialog({
     super.key,
     required this.initialFilter,
     required this.onFilterApplied,
+    required this.userId,
   });
 
   @override
@@ -82,15 +96,51 @@ class TodoFilterDialog extends StatefulWidget {
 
 class _TodoFilterDialogState extends State<TodoFilterDialog> {
   late TodoFilterState _currentFilter;
+  final TextEditingController _tagController = TextEditingController();
+  List<String> _availableTags = [];
 
   @override
   void initState() {
     super.initState();
     _currentFilter = widget.initialFilter;
+    _loadAvailableTags();
+  }
+
+  @override
+  void dispose() {
+    _tagController.dispose();
+    super.dispose();
+  }
+
+  /// 사용 가능한 태그 목록 로드
+  void _loadAvailableTags() async {
+    try {
+      final tags = await TodoService.getAllTags(widget.userId);
+      
+      if (mounted) {
+        setState(() {
+          _availableTags = tags;
+        });
+      }
+    } catch (e) {
+      // 에러 발생 시 기본 태그 사용
+      _availableTags = [
+        '업무', '개인', '공부', '운동', '건강', '취미', 
+        '쇼핑', '여행', '독서', '요리', '청소', '미팅',
+        '프로젝트', '중요', '긴급', '루틴'
+      ];
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    // 다이얼로그가 빌드될 때마다 태그 목록 새로고침
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _loadAvailableTags();
+      }
+    });
+    
     return Dialog(
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
@@ -155,6 +205,10 @@ class _TodoFilterDialogState extends State<TodoFilterDialog> {
                     
                     // 완료 상태 필터
                     _buildCompletionFilter(),
+                    const SizedBox(height: 24),
+                    
+                    // 태그 필터
+                    _buildTagFilter(),
                   ],
                 ),
               ),
@@ -455,6 +509,192 @@ class _TodoFilterDialogState extends State<TodoFilterDialog> {
     );
   }
 
+  Widget _buildTagFilter() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(
+              '🏷️ 태그',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: AppColors.grey700,
+              ),
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              onPressed: _loadAvailableTags,
+              icon: const Icon(Icons.refresh, size: 16),
+              tooltip: '태그 목록 새로고침',
+              style: IconButton.styleFrom(
+                foregroundColor: AppColors.grey600,
+                minimumSize: const Size(24, 24),
+              ),
+            ),
+            IconButton(
+              onPressed: _showTagManagementDialog,
+              icon: const Icon(Icons.settings, size: 16),
+              tooltip: '태그 관리',
+              style: IconButton.styleFrom(
+                foregroundColor: AppColors.grey600,
+                minimumSize: const Size(24, 24),
+              ),
+            ),
+            const Spacer(),
+            if (_currentFilter.tags.isNotEmpty)
+              TextButton.icon(
+                onPressed: () => _updateFilter(clearTags: true),
+                icon: const Icon(Icons.clear, size: 16),
+                label: const Text('모두 해제'),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.grey600,
+                  textStyle: const TextStyle(fontSize: 12),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        
+        // 선택된 태그들
+        if (_currentFilter.tags.isNotEmpty) ...[
+          Text(
+            '선택된 태그:',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: AppColors.grey600,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: _currentFilter.tags.map((tag) => _buildSelectedTagChip(tag)).toList(),
+          ),
+          const SizedBox(height: 16),
+        ],
+        
+        // 사용 가능한 태그들
+        Text(
+          '사용 가능한 태그:',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: AppColors.grey600,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: _getAvailableTagsSorted()
+              .where((tag) => !_currentFilter.tags.contains(tag))
+              .map((tag) => _buildAvailableTagChip(tag))
+              .toList(),
+        ),
+      ],
+    );
+  }
+
+  /// 선택된 태그 칩
+  Widget _buildSelectedTagChip(String tag) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.purple600,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.tag,
+            size: 14,
+            color: Colors.white,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            tag,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(width: 4),
+          GestureDetector(
+            onTap: () => _removeTagFromFilter(tag),
+            child: const Icon(
+              Icons.close,
+              size: 14,
+              color: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 사용 가능한 태그 칩
+  Widget _buildAvailableTagChip(String tag) {
+    return GestureDetector(
+      onTap: () => _addTagToFilter(tag),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: AppColors.grey50,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: AppColors.grey400,
+            width: 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.tag,
+              size: 14,
+              color: AppColors.grey600,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              tag,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: AppColors.grey700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 태그를 필터에 추가
+  void _addTagToFilter(String tag) {
+    final newTags = List<String>.from(_currentFilter.tags);
+    if (!newTags.contains(tag)) {
+      newTags.add(tag);
+      _updateFilter(tags: newTags);
+    }
+  }
+
+  /// 태그를 필터에서 제거
+  void _removeTagFromFilter(String tag) {
+    final newTags = List<String>.from(_currentFilter.tags);
+    newTags.remove(tag);
+    _updateFilter(tags: newTags);
+  }
+
+  /// 외부에서 태그 목록 새로고침 (할일 추가/수정 후 호출)
+  void refreshTags() {
+    _loadAvailableTags();
+  }
+
   Widget _buildFilterChip<T>({
     required String label,
     required T? value,
@@ -580,6 +820,8 @@ class _TodoFilterDialogState extends State<TodoFilterDialog> {
     bool clearPriority = false,
     bool clearDifficulty = false,
     bool clearIsCompleted = false,
+    List<String>? tags,
+    bool clearTags = false,
   }) {
     setState(() {
       _currentFilter = _currentFilter.copyWith(
@@ -597,6 +839,7 @@ class _TodoFilterDialogState extends State<TodoFilterDialog> {
         clearPriority: clearPriority,
         clearDifficulty: clearDifficulty,
         clearIsCompleted: clearIsCompleted,
+        tags: clearTags ? const [] : (tags ?? _currentFilter.tags),
       );
     });
   }
@@ -621,5 +864,29 @@ class _TodoFilterDialogState extends State<TodoFilterDialog> {
       case Priority.high:
         return '🔴';
     }
+  }
+
+  /// 알파벳순으로 정렬된 태그 목록 반환
+  List<String> _getAvailableTagsSorted() {
+    final sortedTags = List<String>.from(_availableTags);
+    
+    // 알파벳순으로 정렬
+    sortedTags.sort((a, b) => a.compareTo(b));
+    
+    return sortedTags;
+  }
+
+  /// 태그 관리 다이얼로그 표시
+  void _showTagManagementDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => TagManagementDialog(
+        userId: widget.userId,
+        availableTags: _availableTags,
+        onTagsUpdated: () {
+          _loadAvailableTags();
+        },
+      ),
+    );
   }
 } 

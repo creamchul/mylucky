@@ -6,18 +6,6 @@ import '../constants/app_colors.dart';
 // Models imports
 import '../models/models.dart';
 
-/// 통계 기간 enum
-enum StatsPeriod {
-  daily('일일', '오늘'),
-  weekly('주간', '이번 주'),
-  monthly('월간', '이번 달'),
-  all('전체', '전체 기간');
-
-  const StatsPeriod(this.displayName, this.description);
-  final String displayName;
-  final String description;
-}
-
 /// 투두 통계 데이터 클래스
 class TodoStats {
   final int totalTodos;
@@ -51,12 +39,9 @@ class TodoStats {
     // 기간별 필터링
     switch (period) {
       case StatsPeriod.daily:
-        final today = DateTime(now.year, now.month, now.day);
-        final tomorrow = today.add(const Duration(days: 1));
-        filteredTodos = todos.where((todo) {
-          return todo.createdAt.isAfter(today) && todo.createdAt.isBefore(tomorrow) ||
-                 (todo.dueDate != null && todo.dueDate!.isAfter(today) && todo.dueDate!.isBefore(tomorrow));
-        }).toList();
+        // 일일 통계의 경우 전달받은 할일 목록을 그대로 사용
+        // (이미 오늘 화면에 표시되는 할일만 전달받음)
+        filteredTodos = todos;
         break;
       case StatsPeriod.weekly:
         final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
@@ -154,10 +139,12 @@ class TodoStats {
 
 class TodoStatsDialog extends StatefulWidget {
   final List<TodoItemModel> todos;
+  final StatsPeriod? initialPeriod;
 
   const TodoStatsDialog({
     super.key,
     required this.todos,
+    this.initialPeriod,
   });
 
   @override
@@ -165,12 +152,13 @@ class TodoStatsDialog extends StatefulWidget {
 }
 
 class _TodoStatsDialogState extends State<TodoStatsDialog> {
-  StatsPeriod _selectedPeriod = StatsPeriod.daily;
+  late StatsPeriod _selectedPeriod;
   late TodoStats _currentStats;
 
   @override
   void initState() {
     super.initState();
+    _selectedPeriod = widget.initialPeriod ?? StatsPeriod.daily;
     _updateStats();
   }
 

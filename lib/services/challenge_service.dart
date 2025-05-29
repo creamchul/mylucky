@@ -513,7 +513,7 @@ class ChallengeService {
             userId: userId,
             title: '${template['title']} - ${i + 1}주차',
             description: template['description'],
-            type: TodoType.weekly,
+            type: TodoType.repeat,
             category: category,
             priority: Priority.medium,
             difficulty: Difficulty.medium,

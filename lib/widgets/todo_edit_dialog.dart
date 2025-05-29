@@ -31,8 +31,8 @@ class _TodoEditDialogState extends State<TodoEditDialog> {
   late Priority _selectedPriority;
   late Difficulty _selectedDifficulty;
   
+  DateTime? _selectedStartDate;
   DateTime? _selectedDueDate;
-  TimeOfDay? _selectedDueTime;
   Duration? _estimatedTime;
   
   late List<String> _tags;
@@ -40,6 +40,11 @@ class _TodoEditDialogState extends State<TodoEditDialog> {
   
   // 반복 설정
   List<int> _selectedWeekdays = [];
+  List<int> _selectedMonthDays = [];
+  List<int> _selectedYearMonths = [];
+  List<int> _selectedYearDays = [];
+  int? _customInterval;
+  RepeatType? _selectedRepeatType;
   
   // 습관 설정
   int? _targetCount;
@@ -47,6 +52,9 @@ class _TodoEditDialogState extends State<TodoEditDialog> {
   // 알림 설정
   late bool _hasReminder;
   late int _reminderMinutesBefore;
+  
+  // 일회성 할일 옵션
+  late bool _showUntilCompleted;
 
   @override
   void initState() {
@@ -61,10 +69,8 @@ class _TodoEditDialogState extends State<TodoEditDialog> {
     _selectedPriority = widget.todo.priority;
     _selectedDifficulty = widget.todo.difficulty;
     
+    _selectedStartDate = widget.todo.startDate;
     _selectedDueDate = widget.todo.dueDate;
-    if (_selectedDueDate != null) {
-      _selectedDueTime = TimeOfDay.fromDateTime(_selectedDueDate!);
-    }
     
     _estimatedTime = widget.todo.estimatedTime;
     _tags = List.from(widget.todo.tags);
@@ -72,10 +78,18 @@ class _TodoEditDialogState extends State<TodoEditDialog> {
     if (widget.todo.repeatPattern?.weekdays != null) {
       _selectedWeekdays = List.from(widget.todo.repeatPattern!.weekdays!);
     }
+    if (widget.todo.repeatPattern?.monthDays != null) {
+      _selectedMonthDays = List.from(widget.todo.repeatPattern!.monthDays!);
+    }
+    if (widget.todo.repeatPattern?.customInterval != null) {
+      _customInterval = widget.todo.repeatPattern!.customInterval;
+    }
+    _selectedRepeatType = widget.todo.repeatPattern?.repeatType;
     
     _targetCount = widget.todo.targetCount;
     _hasReminder = widget.todo.hasReminder;
     _reminderMinutesBefore = widget.todo.reminderMinutesBefore ?? 30;
+    _showUntilCompleted = widget.todo.showUntilCompleted;
   }
 
   @override
@@ -164,13 +178,20 @@ class _TodoEditDialogState extends State<TodoEditDialog> {
                       ),
                       const SizedBox(height: 16),
                       
-                      // 기한 설정
-                      if (_selectedType != TodoType.habit)
-                        _buildDueDateSelector(),
+                      // 시작일 설정
+                      _buildStartDateSelector(),
+                      const SizedBox(height: 16),
                       
-                      // 주간 반복 설정
-                      if (_selectedType == TodoType.weekly && !widget.todo.isCompleted)
-                        _buildWeekdaySelector(),
+                      // 기한 설정
+                      _buildDueDateSelector(),
+                      
+                      // 반복 설정 (반복 할일과 습관)
+                      if ((_selectedType == TodoType.repeat || _selectedType == TodoType.habit) && !widget.todo.isCompleted) ...[
+                        _buildRepeatTypeSelector(),
+                        const SizedBox(height: 16),
+                        if (_selectedRepeatType != null)
+                          _buildRepeatDetailSettings(),
+                      ],
                       
                       // 습관 목표 설정
                       if (_selectedType == TodoType.habit && !widget.todo.isCompleted)
@@ -291,11 +312,20 @@ class _TodoEditDialogState extends State<TodoEditDialog> {
                     _selectedType = type;
                     // 타입 변경 시 관련 설정 초기화
                     if (type == TodoType.habit) {
-                      _selectedDueDate = null;
-                      _selectedDueTime = null;
-                    }
-                    if (type != TodoType.weekly) {
+                      // 습관은 기본적으로 매일 반복으로 설정
+                      _selectedRepeatType = RepeatType.daily;
+                    } else if (type == TodoType.repeat) {
+                      // 반복 할일은 기본적으로 매일 반복으로 설정
+                      if (_selectedRepeatType == null) {
+                        _selectedRepeatType = RepeatType.daily;
+                      }
+                    } else {
+                      // 일회성 할일로 변경 시 반복 설정 초기화
+                      _selectedRepeatType = null;
                       _selectedWeekdays.clear();
+                      _selectedMonthDays.clear();
+                      _selectedYearDays.clear();
+                      _customInterval = null;
                     }
                   });
                 }
@@ -449,6 +479,49 @@ class _TodoEditDialogState extends State<TodoEditDialog> {
     );
   }
 
+  Widget _buildStartDateSelector() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '시작일',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: AppColors.grey700,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: _selectStartDate,
+                icon: const Icon(Icons.calendar_today),
+                label: Text(
+                  _selectedStartDate != null
+                      ? '${_selectedStartDate!.year}.${_selectedStartDate!.month.toString().padLeft(2, '0')}.${_selectedStartDate!.day.toString().padLeft(2, '0')}'
+                      : '날짜 선택',
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              onPressed: () {
+                setState(() {
+                  _selectedStartDate = null;
+                });
+              },
+              icon: const Icon(Icons.clear),
+              tooltip: '시작일 제거',
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+
   Widget _buildDueDateSelector() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -470,20 +543,8 @@ class _TodoEditDialogState extends State<TodoEditDialog> {
                 icon: const Icon(Icons.calendar_today),
                 label: Text(
                   _selectedDueDate != null
-                      ? '${_selectedDueDate!.month}/${_selectedDueDate!.day}'
+                      ? '${_selectedDueDate!.year}.${_selectedDueDate!.month.toString().padLeft(2, '0')}.${_selectedDueDate!.day.toString().padLeft(2, '0')}'
                       : '날짜 선택',
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: _selectedDueDate != null ? _selectDueTime : null,
-                icon: const Icon(Icons.access_time),
-                label: Text(
-                  _selectedDueTime != null
-                      ? '${_selectedDueTime!.hour}:${_selectedDueTime!.minute.toString().padLeft(2, '0')}'
-                      : '시간 선택',
                 ),
               ),
             ),
@@ -492,7 +553,6 @@ class _TodoEditDialogState extends State<TodoEditDialog> {
               onPressed: () {
                 setState(() {
                   _selectedDueDate = null;
-                  _selectedDueTime = null;
                 });
               },
               icon: const Icon(Icons.clear),
@@ -503,6 +563,55 @@ class _TodoEditDialogState extends State<TodoEditDialog> {
         const SizedBox(height: 16),
       ],
     );
+  }
+
+  Widget _buildRepeatTypeSelector() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '반복 유형',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: AppColors.grey700,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          children: RepeatType.values.where((type) => type != RepeatType.yearly).map((type) {
+            final isSelected = _selectedRepeatType == type;
+            return ChoiceChip(
+              label: Text(type.displayName),
+              selected: isSelected,
+              onSelected: (selected) {
+                if (selected) {
+                  setState(() {
+                    _selectedRepeatType = type;
+                  });
+                }
+              },
+              selectedColor: AppColors.purple600,
+              labelStyle: TextStyle(
+                color: isSelected ? Colors.white : AppColors.grey700,
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRepeatDetailSettings() {
+    if (_selectedRepeatType == RepeatType.weekly) {
+      return _buildWeekdaySelector();
+    } else if (_selectedRepeatType == RepeatType.monthly) {
+      return _buildMonthdaySelector();
+    } else if (_selectedRepeatType == RepeatType.custom) {
+      return _buildCustomIntervalSelector();
+    }
+    return Container();
   }
 
   Widget _buildWeekdaySelector() {
@@ -544,6 +653,84 @@ class _TodoEditDialogState extends State<TodoEditDialog> {
               ),
             );
           }),
+        ),
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+
+  Widget _buildMonthdaySelector() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '월별 반복 일자',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: AppColors.grey700,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          children: List.generate(31, (index) {
+            final day = index + 1;
+            final isSelected = _selectedMonthDays.contains(day);
+            
+            return FilterChip(
+              label: Text(day.toString()),
+              selected: isSelected,
+              onSelected: (selected) {
+                setState(() {
+                  if (selected) {
+                    _selectedMonthDays.add(day);
+                  } else {
+                    _selectedMonthDays.remove(day);
+                  }
+                });
+              },
+              selectedColor: AppColors.purple600,
+              labelStyle: TextStyle(
+                color: isSelected ? Colors.white : AppColors.grey700,
+              ),
+            );
+          }),
+        ),
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+
+  Widget _buildCustomIntervalSelector() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '커스텀 간격',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: AppColors.grey700,
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextFormField(
+          initialValue: _customInterval?.toString(),
+          keyboardType: TextInputType.number,
+          decoration: InputDecoration(
+            hintText: '간격을 일 단위로 입력하세요',
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: AppColors.purple600),
+            ),
+          ),
+          onChanged: (value) {
+            _customInterval = int.tryParse(value);
+          },
         ),
         const SizedBox(height: 16),
       ],
@@ -787,6 +974,21 @@ class _TodoEditDialogState extends State<TodoEditDialog> {
     );
   }
 
+  void _selectStartDate() async {
+    final date = await showDatePicker(
+      context: context,
+      initialDate: _selectedStartDate ?? DateTime.now(),
+      firstDate: DateTime.now().subtract(const Duration(days: 365)),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+    );
+    
+    if (date != null) {
+      setState(() {
+        _selectedStartDate = date;
+      });
+    }
+  }
+
   void _selectDueDate() async {
     final date = await showDatePicker(
       context: context,
@@ -798,23 +1000,6 @@ class _TodoEditDialogState extends State<TodoEditDialog> {
     if (date != null) {
       setState(() {
         _selectedDueDate = date;
-        // 날짜가 변경되면 시간도 초기화
-        if (_selectedDueTime == null) {
-          _selectedDueTime = const TimeOfDay(hour: 23, minute: 59);
-        }
-      });
-    }
-  }
-
-  void _selectDueTime() async {
-    final time = await showTimePicker(
-      context: context,
-      initialTime: _selectedDueTime ?? TimeOfDay.now(),
-    );
-    
-    if (time != null) {
-      setState(() {
-        _selectedDueTime = time;
       });
     }
   }
@@ -834,46 +1019,43 @@ class _TodoEditDialogState extends State<TodoEditDialog> {
       return;
     }
 
-    // 주간 반복 할일의 경우 요일 선택 확인
-    if (_selectedType == TodoType.weekly && _selectedWeekdays.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('주간 반복 할일은 최소 하나의 요일을 선택해야 합니다.'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
-    // 마감일과 시간 결합
-    DateTime? finalDueDate;
-    if (_selectedDueDate != null) {
-      if (_selectedDueTime != null) {
-        finalDueDate = DateTime(
-          _selectedDueDate!.year,
-          _selectedDueDate!.month,
-          _selectedDueDate!.day,
-          _selectedDueTime!.hour,
-          _selectedDueTime!.minute,
-        );
-      } else {
-        finalDueDate = DateTime(
-          _selectedDueDate!.year,
-          _selectedDueDate!.month,
-          _selectedDueDate!.day,
-          23,
-          59,
-        );
-      }
-    }
-
     // 반복 패턴 생성
     RepeatPattern? repeatPattern;
-    if (_selectedType == TodoType.weekly && _selectedWeekdays.isNotEmpty) {
-      repeatPattern = RepeatPattern(
-        type: _selectedType,
-        weekdays: _selectedWeekdays,
-      );
+    if ((_selectedType == TodoType.repeat || _selectedType == TodoType.habit) && _selectedRepeatType != null) {
+      switch (_selectedRepeatType!) {
+        case RepeatType.daily:
+          repeatPattern = RepeatPattern(
+            repeatType: RepeatType.daily,
+          );
+          break;
+        case RepeatType.weekly:
+          if (_selectedWeekdays.isNotEmpty) {
+            repeatPattern = RepeatPattern(
+              repeatType: RepeatType.weekly,
+              weekdays: _selectedWeekdays,
+            );
+          }
+          break;
+        case RepeatType.monthly:
+          if (_selectedMonthDays.isNotEmpty) {
+            repeatPattern = RepeatPattern(
+              repeatType: RepeatType.monthly,
+              monthDays: _selectedMonthDays,
+            );
+          }
+          break;
+        case RepeatType.yearly:
+          // 연간 반복은 지원하지 않음
+          break;
+        case RepeatType.custom:
+          if (_customInterval != null && _customInterval! > 0) {
+            repeatPattern = RepeatPattern(
+              repeatType: RepeatType.custom,
+              customInterval: _customInterval,
+            );
+          }
+          break;
+      }
     }
 
     // 수정된 투두 생성
@@ -884,14 +1066,15 @@ class _TodoEditDialogState extends State<TodoEditDialog> {
       category: _selectedCategory,
       priority: _selectedPriority,
       difficulty: _selectedDifficulty,
-      dueDate: finalDueDate,
+      startDate: _selectedStartDate,
+      dueDate: _selectedDueDate,
       estimatedTime: _estimatedTime,
       repeatPattern: repeatPattern,
       tags: _tags,
       targetCount: _targetCount,
       hasReminder: _hasReminder,
       reminderMinutesBefore: _hasReminder ? _reminderMinutesBefore : null,
-      clearDueDate: finalDueDate == null,
+      showUntilCompleted: _showUntilCompleted,
     );
 
     widget.onTodoUpdated(updatedTodo);

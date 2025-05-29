@@ -12,6 +12,7 @@ import '../models/models.dart';
 import '../data/fortune_messages.dart';
 import '../services/user_service.dart';
 import '../services/reward_service.dart';
+import '../utils/snackbar_utils.dart';
 
 class FortuneResultPage extends StatefulWidget {
   final UserModel currentUser;
@@ -155,31 +156,7 @@ class _FortuneResultPageState extends State<FortuneResultPage>
   // 포인트 획득 알림 표시
   void _showPointsEarnedSnackBar(int points, String activity) {
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              Icon(
-                Icons.stars,
-                color: Colors.amber.shade200,
-                size: 20,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  '$activity으로 $points 포인트 획득!',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          backgroundColor: Colors.orange.shade400,
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 3),
-        ),
-      );
+      SnackBarUtils.showPointsEarned(context, points, activity);
     }
   }
 

@@ -5,6 +5,7 @@ import '../models/models.dart';
 import '../services/animal_collector_service.dart';
 import '../data/animal_data.dart';
 import 'animal_collection_page.dart';
+import '../utils/snackbar_utils.dart';
 
 class AnimalClickerPage extends StatefulWidget {
   final UserModel currentUser;
@@ -1275,23 +1276,11 @@ class _AnimalClickerPageState extends State<AnimalClickerPage>
 
   // 성공 스낵바
   void _showSuccessSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.green,
-        duration: const Duration(seconds: 2),
-      ),
-    );
+    SnackBarUtils.showSuccess(context, message);
   }
 
   // 에러 스낵바
   void _showErrorSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-        duration: const Duration(seconds: 2),
-      ),
-    );
+    SnackBarUtils.showError(context, message);
   }
 } 

@@ -7,6 +7,7 @@ export 'user_model.dart';
 export 'focus_session_model.dart';
 export 'reward_model.dart';
 export 'animal_species.dart';
+export 'stats_enums.dart';
 
 // 모든 모델을 한 곳에서 export
 export 'fortune_model.dart';

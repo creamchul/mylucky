@@ -29,6 +29,8 @@ import 'todo_list_page.dart';
 // 아직 분리되지 않은 페이지들 - 임시로 main.dart에서 가져옴 (나중에 분리)
 // import '../main.dart' show MoreMenuPage;
 
+import '../utils/snackbar_utils.dart';
+
 class MyLuckyHomePage extends StatefulWidget {
   const MyLuckyHomePage({super.key});
 
@@ -290,45 +292,11 @@ class _MyLuckyHomePageState extends State<MyLuckyHomePage> with WidgetsBindingOb
     }
   }
 
-  // 최적화된 포인트 획득 알림 표시
+  // 포인트 획득 알림 표시
   void _showPointsEarnedSnackBar(int points, String activity) {
-    if (!mounted) return;
-
-    // 기존 스낵바 즉시 제거
-    ScaffoldMessenger.of(context).clearSnackBars();
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-          mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.stars,
-                color: Colors.amber.shade200,
-                size: 20,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  '$activity으로 $points 포인트 획득!',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w500,
-                  fontSize: 14,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          backgroundColor: Colors.orange.shade400,
-          behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 2), // 3초 → 2초로 단축
-        margin: const EdgeInsets.all(16),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        elevation: 6,
-      ),
-    );
+    if (mounted) {
+      SnackBarUtils.showPointsEarned(context, points, activity);
+    }
   }
 
   // 축하 메시지 다이얼로그를 표시하는 함수

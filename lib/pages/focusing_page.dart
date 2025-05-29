@@ -6,6 +6,7 @@ import '../../models/user_model.dart';
 import '../../services/focus_service.dart';
 import '../../widgets/tree_widget.dart';
 import 'home_page.dart'; // 같은 디렉토리의 home_page.dart 파일
+import '../utils/snackbar_utils.dart';
 
 class FocusingPage extends StatefulWidget {
   final FocusSessionModel session;
@@ -129,13 +130,7 @@ class _FocusingPageState extends State<FocusingPage> with TickerProviderStateMix
     } catch (e) {
       if (mounted) {
         setState(() => _isAbandoning = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('집중 포기 처리 중 오류가 발생했습니다: $e'),
-            backgroundColor: Colors.red.shade400,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        SnackBarUtils.showError(context, '집중 포기 처리 중 오류가 발생했습니다: $e');
         _showResultDialog(false);
       }
     }

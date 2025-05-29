@@ -5,6 +5,7 @@ import '../models/models.dart';
 import '../services/animal_collector_service.dart';
 import '../data/animal_data.dart';
 import 'animal_collection_page.dart';
+import '../utils/snackbar_utils.dart';
 
 class AnimalCollectorPage extends StatefulWidget {
   final UserModel currentUser;
@@ -1660,8 +1661,6 @@ class _AnimalCollectorPageState extends State<AnimalCollectorPage>
     return result ?? false;
   }
 
-
-
   // 액션별 메시지 생성
   String _getActionMessage(String action) {
     switch (action) {
@@ -1680,12 +1679,6 @@ class _AnimalCollectorPageState extends State<AnimalCollectorPage>
 
   // 에러 스낵바 (에러는 여전히 스낵바로 표시)
   void _showErrorSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-        duration: const Duration(seconds: 2),
-      ),
-    );
+    SnackBarUtils.showError(context, message);
   }
 } 

@@ -18,6 +18,12 @@ import '../widgets/todo_edit_dialog.dart';
 import '../widgets/todo_filter_dialog.dart';
 import '../widgets/todo_stats_dialog.dart';
 
+// Pages imports
+import 'habit_dashboard_page.dart';
+
+// Utils imports
+import '../utils/snackbar_utils.dart';
+
 class TodoListPage extends StatefulWidget {
   final UserModel currentUser;
   
@@ -72,6 +78,11 @@ class _TodoListPageState extends State<TodoListPage>
     
     _loadTodos();
     _fadeController.forward();
+    
+    // 어제 습관 결과 확인 (앱 시작 후 잠시 후에 표시)
+    Future.delayed(const Duration(milliseconds: 1500), () {
+      _checkYesterdayHabits();
+    });
   }
 
   @override
@@ -125,7 +136,7 @@ class _TodoListPageState extends State<TodoListPage>
           _isLoading = false;
         });
         
-        _showErrorSnackBar('투두 목록을 불러오는데 실패했습니다.');
+        SnackBarUtils.showError(context, '투두 목록을 불러오는데 실패했습니다.');
       }
     }
   }
@@ -172,7 +183,7 @@ class _TodoListPageState extends State<TodoListPage>
       await _refreshTodos();
 
       // 완료 알림 (포인트 알림 제거)
-      _showSuccessSnackBar('할일을 완료했습니다! 🎉');
+      SnackBarUtils.showSuccess(context, '할일을 완료했습니다! 🎉');
 
       if (kDebugMode) {
         print('투두 완료 처리 완료: ${todo.title}');
@@ -181,7 +192,7 @@ class _TodoListPageState extends State<TodoListPage>
       if (kDebugMode) {
         print('투두 완료 처리 실패: $e');
       }
-      _showErrorSnackBar('할일 완료 처리에 실패했습니다.');
+      SnackBarUtils.showError(context, '할일 완료 처리에 실패했습니다.');
     }
   }
 
@@ -198,7 +209,7 @@ class _TodoListPageState extends State<TodoListPage>
       );
 
       await _refreshTodos();
-      _showSuccessSnackBar('할일이 삭제되었습니다.');
+      SnackBarUtils.showSuccess(context, '할일이 삭제되었습니다.');
 
       if (kDebugMode) {
         print('투두 삭제 완료: ${todo.title}');
@@ -207,7 +218,7 @@ class _TodoListPageState extends State<TodoListPage>
       if (kDebugMode) {
         print('투두 삭제 실패: $e');
       }
-      _showErrorSnackBar('할일 삭제에 실패했습니다.');
+      SnackBarUtils.showError(context, '할일 삭제에 실패했습니다.');
     }
   }
 
@@ -228,7 +239,7 @@ class _TodoListPageState extends State<TodoListPage>
       // 목록 새로고침
       await _refreshTodos();
       
-      _showSuccessSnackBar('할일 완료가 취소되었습니다.');
+      SnackBarUtils.showSuccess(context, '할일 완료가 취소되었습니다.');
 
       if (kDebugMode) {
         print('투두 완료 취소 완료: ${todo.title}');
@@ -237,8 +248,207 @@ class _TodoListPageState extends State<TodoListPage>
       if (kDebugMode) {
         print('투두 완료 취소 실패: $e');
       }
-      _showErrorSnackBar('할일 완료 취소에 실패했습니다.');
+      SnackBarUtils.showError(context, '할일 완료 취소에 실패했습니다.');
     }
+  }
+
+  /// 습관 진행률 증가
+  Future<void> _incrementHabitProgress(TodoItemModel todo) async {
+    try {
+      if (kDebugMode) {
+        print('UI: 습관 진행률 증가 시작 - ${todo.title}');
+      }
+      
+      final result = await TodoService.incrementHabitProgress(
+        userId: _currentUser.id,
+        todoId: todo.id,
+        currentUser: _currentUser,
+      );
+
+      if (kDebugMode) {
+        print('UI: TodoService.incrementHabitProgress 완료');
+        print('UI: result keys: ${result.keys.toList()}');
+        print('UI: isCompleted: ${result['isCompleted']}');
+      }
+
+      // 사용자 정보 업데이트
+      if (result['user'] != null) {
+        setState(() {
+          _currentUser = result['user'] as UserModel;
+        });
+        if (kDebugMode) {
+          print('UI: 사용자 정보 업데이트 완료');
+        }
+      }
+
+      // 목록 새로고침
+      if (kDebugMode) {
+        print('UI: 목록 새로고침 시작');
+      }
+      await _refreshTodos();
+      if (kDebugMode) {
+        print('UI: 목록 새로고침 완료');
+      }
+
+      // 진행률 피드백 - 최적화된 스낵바 사용
+      final updatedTodo = result['todo'] as TodoItemModel;
+      final isCompleted = result['isCompleted'] as bool? ?? false;
+      final progressText = result['progressText'] as String? ?? '';
+
+      if (kDebugMode) {
+        print('UI: 피드백 준비 - isCompleted: $isCompleted, progressText: $progressText');
+      }
+
+      if (isCompleted) {
+        SnackBarUtils.showHabitProgress(
+          context, 
+          '${updatedTodo.title} 완료!',
+          isCompleted: true,
+        );
+      } else {
+        SnackBarUtils.showHabitProgress(
+          context, 
+          progressText,
+          isCompleted: false,
+        );
+      }
+
+      if (kDebugMode) {
+        print('UI: 습관 진행률 증가 완료: ${todo.title} - $progressText');
+      }
+    } catch (e, stackTrace) {
+      if (kDebugMode) {
+        print('UI: 습관 진행률 증가 실패: $e');
+        print('UI: 스택 트레이스: $stackTrace');
+      }
+      SnackBarUtils.showError(context, '습관 진행률 업데이트에 실패했습니다.');
+    }
+  }
+
+  /// 어제 습관 결과 확인 및 표시
+  Future<void> _checkYesterdayHabits() async {
+    if (!mounted) return;
+    
+    try {
+      final summary = await TodoService.getYesterdayHabitSummary(_currentUser.id);
+      
+      if (summary['hasResults'] == true && mounted) {
+        _showYesterdayHabitSummary(summary);
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('어제 습관 결과 확인 실패: $e');
+      }
+    }
+  }
+
+  /// 어제 습관 결과 요약 다이얼로그 표시
+  void _showYesterdayHabitSummary(Map<String, dynamic> summary) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: Row(
+          children: [
+            Icon(
+              Icons.history,
+              color: AppColors.purple600,
+              size: 28,
+            ),
+            const SizedBox(width: 8),
+            const Text(
+              '어제의 습관 결과',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              summary['summaryMessage'] ?? '',
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 16),
+            if (summary['results'] != null) ...[
+              const Text(
+                '상세 결과:',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 8),
+              ...((summary['results'] as List).map((result) {
+                final completionRate = (result['completionRate'] as double) * 100;
+                String statusEmoji = '';
+                if (result['isCompleted'] == true) {
+                  statusEmoji = '🎉';
+                } else if (result['currentCount'] > 0) {
+                  statusEmoji = '😊';
+                } else {
+                  statusEmoji = '😞';
+                }
+                
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Row(
+                    children: [
+                      Text(statusEmoji),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          '${result['title']}: ${result['currentCount']}/${result['targetCount']}',
+                          style: const TextStyle(fontSize: 13),
+                        ),
+                      ),
+                      Text(
+                        '${completionRate.toInt()}%',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: completionRate >= 100 ? AppColors.green600 : AppColors.grey600,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList()),
+            ],
+            const SizedBox(height: 16),
+            Text(
+              '오늘도 화이팅! 💪',
+              style: TextStyle(
+                fontSize: 14,
+                color: AppColors.purple700,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(
+              '확인',
+              style: TextStyle(
+                color: AppColors.purple600,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   // ========================================
@@ -303,6 +513,15 @@ class _TodoListPageState extends State<TodoListPage>
                 ),
               ),
           ],
+        ),
+        // 습관 대시보드 버튼
+        IconButton(
+          icon: Icon(
+            Icons.track_changes,
+            color: AppColors.purple600,
+          ),
+          onPressed: _showHabitDashboard,
+          tooltip: '습관 추적',
         ),
         // 통계 버튼
         IconButton(
@@ -379,6 +598,14 @@ class _TodoListPageState extends State<TodoListPage>
     // 완료 상태 필터
     if (_currentFilter.isCompleted != null) {
       filteredTodayTodos = filteredTodayTodos.where((todo) => todo.isCompleted == _currentFilter.isCompleted).toList();
+    }
+    
+    // 태그 필터
+    if (_currentFilter.tags.isNotEmpty) {
+      filteredTodayTodos = filteredTodayTodos.where((todo) {
+        // 선택된 태그 중 하나라도 포함하면 표시
+        return _currentFilter.tags.any((filterTag) => todo.tags.contains(filterTag));
+      }).toList();
     }
 
     if (filteredTodayTodos.isEmpty) {
@@ -460,6 +687,14 @@ class _TodoListPageState extends State<TodoListPage>
     if (_currentFilter.difficulty != null) {
       completedTodos = completedTodos.where((todo) => todo.difficulty == _currentFilter.difficulty).toList();
     }
+    
+    // 태그 필터
+    if (_currentFilter.tags.isNotEmpty) {
+      completedTodos = completedTodos.where((todo) {
+        // 선택된 태그 중 하나라도 포함하면 표시
+        return _currentFilter.tags.any((filterTag) => todo.tags.contains(filterTag));
+      }).toList();
+    }
 
     if (completedTodos.isEmpty) {
       return _buildEmptyState(
@@ -481,40 +716,94 @@ class _TodoListPageState extends State<TodoListPage>
 
   /// 투두 아이템 빌드
   Widget _buildTodoItem(TodoItemModel todo) {
+    final isFuture = todo.isFutureTodo;
+    
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       elevation: 2,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
       ),
+      // 미래 날짜 할일은 약간 투명하게 표시
+      color: isFuture && !todo.isCompleted 
+          ? AppColors.grey50.withOpacity(0.7)
+          : null,
       child: ListTile(
         contentPadding: const EdgeInsets.all(16),
-        leading: Checkbox(
-          value: todo.isCompleted,
-          onChanged: todo.isCompleted ? null : (_) => _completeTodo(todo),
-          activeColor: AppColors.purple600,
-        ),
-        title: Text(
-          todo.title,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            decoration: todo.isCompleted ? TextDecoration.lineThrough : null,
-            color: todo.isCompleted ? AppColors.grey600 : AppColors.grey800,
-          ),
+        leading: _buildTodoLeading(todo),
+        title: Row(
+          children: [
+            Expanded(
+              child: Text(
+                todo.title,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  decoration: todo.isCompleted ? TextDecoration.lineThrough : null,
+                  color: todo.isCompleted 
+                      ? AppColors.grey600 
+                      : (isFuture ? AppColors.grey500 : AppColors.grey800),
+                ),
+              ),
+            ),
+            // 미래 날짜 할일 표시 아이콘
+            if (isFuture && !todo.isCompleted) ...[
+              const SizedBox(width: 8),
+              Icon(
+                Icons.schedule,
+                size: 16,
+                color: AppColors.grey500,
+              ),
+            ],
+          ],
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // 미래 날짜 할일 안내 메시지
+            if (isFuture && !todo.isCompleted) ...[
+              const SizedBox(height: 4),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.orange400.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.info_outline,
+                      size: 14,
+                      color: AppColors.orange700,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '마감일에 처리 가능',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.orange700,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             if (todo.description.isNotEmpty) ...[
               const SizedBox(height: 4),
               Text(
                 todo.description,
                 style: TextStyle(
                   fontSize: 14,
-                  color: AppColors.grey600,
+                  color: isFuture ? AppColors.grey400 : AppColors.grey600,
                 ),
               ),
+            ],
+            // 습관 진행률 표시
+            if (todo.isHabit && !todo.isCompleted) ...[
+              const SizedBox(height: 8),
+              _buildHabitProgress(todo),
             ],
             if (todo.dueDate != null) ...[
               const SizedBox(height: 4),
@@ -605,6 +894,15 @@ class _TodoListPageState extends State<TodoListPage>
                 ),
               ],
             ),
+            // 태그 표시
+            if (todo.tags.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 6,
+                runSpacing: 4,
+                children: todo.tags.map((tag) => _buildTagChip(tag)).toList(),
+              ),
+            ],
           ],
         ),
         trailing: PopupMenuButton<String>(
@@ -657,7 +955,135 @@ class _TodoListPageState extends State<TodoListPage>
                   ),
                 ],
         ),
+        // 습관일 때 터치로 진행률 증가
+        onTap: todo.isHabit && !todo.isCompleted ? () => _incrementHabitProgress(todo) : null,
       ),
+    );
+  }
+
+  /// 투두 Leading 위젯 빌드 (체크박스 또는 습관 버튼)
+  Widget _buildTodoLeading(TodoItemModel todo) {
+    if (todo.isHabit && !todo.isCompleted) {
+      // 습관용 + 버튼 (미래 날짜 체크)
+      final isCheckable = todo.isCheckableToday;
+      
+      return GestureDetector(
+        onTap: isCheckable ? () => _incrementHabitProgress(todo) : () => _showFutureTodoWarning(todo),
+        child: Container(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            color: isCheckable ? AppColors.purple600 : AppColors.grey400,
+            shape: BoxShape.circle,
+            boxShadow: isCheckable ? [
+              BoxShadow(
+                color: AppColors.purple600.withOpacity(0.3),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ] : null,
+          ),
+          child: Icon(
+            isCheckable ? Icons.add : Icons.schedule,
+            color: Colors.white,
+            size: 24,
+          ),
+        ),
+      );
+    } else {
+      // 일반 체크박스 (미래 날짜 체크)
+      final isCheckable = todo.isCheckableToday;
+      
+      return Checkbox(
+        value: todo.isCompleted,
+        onChanged: isCheckable 
+            ? (todo.isCompleted ? null : (_) => _completeTodo(todo))
+            : (_) => _showFutureTodoWarning(todo),
+        activeColor: AppColors.purple600,
+        // 미래 날짜 할일은 비활성화 스타일
+        fillColor: MaterialStateProperty.resolveWith<Color>((states) {
+          if (!isCheckable && !todo.isCompleted) {
+            return AppColors.grey400;
+          }
+          if (states.contains(MaterialState.selected)) {
+            return AppColors.purple600;
+          }
+          return Colors.transparent;
+        }),
+      );
+    }
+  }
+
+  /// 습관 진행률 표시 위젯
+  Widget _buildHabitProgress(TodoItemModel todo) {
+    final progress = todo.habitProgress;
+    final progressText = todo.habitProgressText;
+    final isFuture = todo.isFutureTodo;
+    final isCheckable = todo.isCheckableToday;
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(
+              Icons.trending_up,
+              size: 16,
+              color: isCheckable ? AppColors.purple600 : AppColors.grey400,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              '진행률: $progressText',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: isCheckable ? AppColors.purple700 : AppColors.grey500,
+              ),
+            ),
+            const Spacer(),
+            Text(
+              '${(progress * 100).toInt()}%',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: isCheckable ? AppColors.purple700 : AppColors.grey500,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        LinearProgressIndicator(
+          value: progress,
+          backgroundColor: AppColors.grey200,
+          valueColor: AlwaysStoppedAnimation<Color>(
+            isCheckable ? AppColors.purple600 : AppColors.grey400
+          ),
+          minHeight: 6,
+        ),
+        const SizedBox(height: 4),
+        Text(
+          isCheckable ? '터치해서 +1 추가하기' : '마감일에 처리 가능',
+          style: TextStyle(
+            fontSize: 11,
+            color: isCheckable ? AppColors.grey500 : AppColors.orange600,
+            fontStyle: FontStyle.italic,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// 미래 날짜 할일 경고 메시지 표시
+  void _showFutureTodoWarning(TodoItemModel todo) {
+    final dueDate = todo.dueDate;
+    if (dueDate == null) return;
+    
+    final dueDateStr = '${dueDate.year}.${dueDate.month.toString().padLeft(2, '0')}.${dueDate.day.toString().padLeft(2, '0')}';
+    
+    SnackBarUtils.showInfo(
+      context, 
+      '${dueDateStr}에 처리할 수 있습니다',
+      duration: const Duration(seconds: 2),
     );
   }
 
@@ -759,6 +1185,14 @@ class _TodoListPageState extends State<TodoListPage>
       filtered = filtered.where((todo) => todo.isCompleted == _currentFilter.isCompleted).toList();
     }
     
+    // 태그 필터
+    if (_currentFilter.tags.isNotEmpty) {
+      filtered = filtered.where((todo) {
+        // 선택된 태그 중 하나라도 포함하면 표시
+        return _currentFilter.tags.any((filterTag) => todo.tags.contains(filterTag));
+      }).toList();
+    }
+    
     return filtered;
   }
 
@@ -782,6 +1216,7 @@ class _TodoListPageState extends State<TodoListPage>
               category: todo.category,
               priority: todo.priority,
               difficulty: todo.difficulty,
+              startDate: todo.startDate,
               dueDate: todo.dueDate,
               estimatedTime: todo.estimatedTime,
               repeatPattern: todo.repeatPattern,
@@ -790,12 +1225,13 @@ class _TodoListPageState extends State<TodoListPage>
               hasReminder: todo.hasReminder,
               reminderTime: todo.reminderTime,
               reminderMinutesBefore: todo.reminderMinutesBefore,
+              showUntilCompleted: todo.showUntilCompleted,
             );
 
             // 목록 새로고침
             await _refreshTodos();
             
-            _showSuccessSnackBar('할일이 추가되었습니다.');
+            SnackBarUtils.showSuccess(context, '할일이 추가되었습니다.');
             
             if (kDebugMode) {
               print('투두 추가 완료: ${newTodo.title}');
@@ -804,7 +1240,7 @@ class _TodoListPageState extends State<TodoListPage>
             if (kDebugMode) {
               print('투두 추가 실패: $e');
             }
-            _showErrorSnackBar('할일 추가에 실패했습니다.');
+            SnackBarUtils.showError(context, '할일 추가에 실패했습니다.');
           }
         },
       ),
@@ -827,18 +1263,20 @@ class _TodoListPageState extends State<TodoListPage>
               category: updatedTodo.category,
               priority: updatedTodo.priority,
               difficulty: updatedTodo.difficulty,
+              startDate: updatedTodo.startDate,
               dueDate: updatedTodo.dueDate,
               estimatedTime: updatedTodo.estimatedTime,
               hasReminder: updatedTodo.hasReminder,
               reminderTime: updatedTodo.reminderTime,
               reminderMinutesBefore: updatedTodo.reminderMinutesBefore,
+              clearStartDate: updatedTodo.startDate == null,
               clearDueDate: updatedTodo.dueDate == null,
             );
             
             // 목록 새로고침
             await _refreshTodos();
             
-            _showSuccessSnackBar('할일이 수정되었습니다.');
+            SnackBarUtils.showSuccess(context, '할일이 수정되었습니다.');
             
             if (kDebugMode) {
               print('투두 수정 완료: ${updatedTodo.title}');
@@ -847,7 +1285,7 @@ class _TodoListPageState extends State<TodoListPage>
             if (kDebugMode) {
               print('투두 수정 실패: $e');
             }
-            _showErrorSnackBar('할일 수정에 실패했습니다.');
+            SnackBarUtils.showError(context, '할일 수정에 실패했습니다.');
           }
         },
       ),
@@ -860,6 +1298,7 @@ class _TodoListPageState extends State<TodoListPage>
       context: context,
       builder: (context) => TodoFilterDialog(
         initialFilter: _currentFilter,
+        userId: _currentUser.id,
         onFilterApplied: (filter) {
           setState(() {
             _currentFilter = filter;
@@ -871,10 +1310,43 @@ class _TodoListPageState extends State<TodoListPage>
 
   /// 통계 다이얼로그
   void _showStatsDialog() {
+    // 현재 탭에 따라 적절한 할일 목록 전달
+    List<TodoItemModel> statsTargetTodos;
+    StatsPeriod initialPeriod;
+    
+    switch (_tabController.index) {
+      case 0: // 오늘 탭
+        statsTargetTodos = _todayTodos;
+        initialPeriod = StatsPeriod.daily;
+        break;
+      case 1: // 전체 탭
+        statsTargetTodos = _todos;
+        initialPeriod = StatsPeriod.all;
+        break;
+      case 2: // 완료 탭
+        statsTargetTodos = _todos.where((todo) => todo.isCompleted).toList();
+        initialPeriod = StatsPeriod.all;
+        break;
+      default:
+        statsTargetTodos = _todos;
+        initialPeriod = StatsPeriod.all;
+    }
+    
     showDialog(
       context: context,
       builder: (context) => TodoStatsDialog(
-        todos: _todos,
+        todos: statsTargetTodos,
+        initialPeriod: initialPeriod,
+      ),
+    );
+  }
+
+  /// 습관 대시보드로 이동
+  void _showHabitDashboard() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => HabitDashboardPage(currentUser: _currentUser),
       ),
     );
   }
@@ -901,46 +1373,6 @@ class _TodoListPageState extends State<TodoListPage>
     ) ?? false;
   }
 
-  // ========================================
-  // 스낵바 메서드
-  // ========================================
-
-  void _showSuccessSnackBar(String message) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          backgroundColor: AppColors.green600,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
-  }
-
-  void _showErrorSnackBar(String message) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          backgroundColor: Colors.red.shade600,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
-  }
-
-  void _showInfoSnackBar(String message) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          backgroundColor: AppColors.blue600,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
-  }
-
   Color _getDifficultyColor(Difficulty difficulty) {
     switch (difficulty) {
       case Difficulty.easy:
@@ -950,5 +1382,70 @@ class _TodoListPageState extends State<TodoListPage>
       case Difficulty.hard:
         return AppColors.red600;
     }
+  }
+
+  // ========================================
+  // 스낵바 메서드 (레거시 - 호환성을 위해 유지하되 최적화된 유틸리티 사용)
+  // ========================================
+
+  void _showSuccessSnackBar(String message) {
+    SnackBarUtils.showSuccess(context, message);
+  }
+
+  void _showErrorSnackBar(String message) {
+    SnackBarUtils.showError(context, message);
+  }
+
+  void _showInfoSnackBar(String message) {
+    SnackBarUtils.showInfo(context, message);
+  }
+
+  /// 태그 칩 빌드
+  Widget _buildTagChip(String tag) {
+    // 태그별로 다른 색상 적용 (해시코드 기반)
+    final colors = [
+      AppColors.blue400,
+      AppColors.green400,
+      AppColors.orange400,
+      AppColors.purple400,
+      Colors.teal.shade400,
+      Colors.pink.shade400,
+      Colors.indigo.shade400,
+      Colors.cyan.shade400,
+    ];
+    
+    final colorIndex = tag.hashCode.abs() % colors.length;
+    final chipColor = colors[colorIndex];
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: chipColor.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: chipColor.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.tag,
+            size: 12,
+            color: chipColor,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            tag,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+              color: chipColor.withOpacity(0.8),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 } 

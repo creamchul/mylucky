@@ -11,6 +11,9 @@ import '../models/models.dart';
 import '../services/habit_service.dart';
 import '../services/todo_service.dart';
 
+// Utils imports
+import '../utils/snackbar_utils.dart';
+
 class HabitDashboardPage extends StatefulWidget {
   final UserModel currentUser;
   
@@ -721,13 +724,7 @@ class _HabitDashboardPageState extends State<HabitDashboardPage>
 
   void _showErrorSnackBar(String message) {
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          backgroundColor: Colors.red.shade600,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      SnackBarUtils.showError(context, message);
     }
   }
 } 

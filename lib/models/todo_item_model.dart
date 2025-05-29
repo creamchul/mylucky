@@ -4,8 +4,7 @@ import 'dart:convert';
 /// 투두 아이템 타입
 enum TodoType {
   oneTime,    // 🎯 일회성 할일
-  daily,      // 📅 매일 반복
-  weekly,     // 📆 주간 반복  
+  repeat,     // 🔄 반복 할일 (세부 유형은 RepeatType으로 구분)
   habit,      // 💪 습관
 }
 
@@ -16,10 +15,8 @@ extension TodoTypeExtension on TodoType {
     switch (this) {
       case TodoType.oneTime:
         return '🎯';
-      case TodoType.daily:
-        return '📅';
-      case TodoType.weekly:
-        return '📆';
+      case TodoType.repeat:
+        return '🔄';
       case TodoType.habit:
         return '💪';
     }
@@ -30,12 +27,70 @@ extension TodoTypeExtension on TodoType {
     switch (this) {
       case TodoType.oneTime:
         return '일회성';
-      case TodoType.daily:
-        return '매일 반복';
-      case TodoType.weekly:
-        return '주간 반복';
+      case TodoType.repeat:
+        return '반복';
       case TodoType.habit:
         return '습관';
+    }
+  }
+}
+
+/// 반복 유형
+enum RepeatType {
+  daily,      // 📅 매일 반복
+  weekly,     // 📆 주간 반복 (요일 선택)
+  monthly,    // 🗓️ 월간 반복 (일자 선택)
+  yearly,     // 📊 연간 반복 (월, 일 선택)
+  custom,     // ⚙️ 사용자 정의 (N일마다)
+}
+
+/// RepeatType 확장
+extension RepeatTypeExtension on RepeatType {
+  /// 반복 타입 이모지
+  String get emoji {
+    switch (this) {
+      case RepeatType.daily:
+        return '📅';
+      case RepeatType.weekly:
+        return '📆';
+      case RepeatType.monthly:
+        return '🗓️';
+      case RepeatType.yearly:
+        return '📊';
+      case RepeatType.custom:
+        return '⚙️';
+    }
+  }
+
+  /// 반복 타입 이름
+  String get displayName {
+    switch (this) {
+      case RepeatType.daily:
+        return '매일';
+      case RepeatType.weekly:
+        return '주간';
+      case RepeatType.monthly:
+        return '월간';
+      case RepeatType.yearly:
+        return '연간';
+      case RepeatType.custom:
+        return '사용자 정의';
+    }
+  }
+
+  /// 반복 타입 설명
+  String get description {
+    switch (this) {
+      case RepeatType.daily:
+        return '매일 반복되는 할일';
+      case RepeatType.weekly:
+        return '선택한 요일에 반복';
+      case RepeatType.monthly:
+        return '선택한 날짜에 매월 반복';
+      case RepeatType.yearly:
+        return '선택한 날짜에 매년 반복';
+      case RepeatType.custom:
+        return 'N일마다 반복';
     }
   }
 }
@@ -171,29 +226,41 @@ extension DifficultyExtension on Difficulty {
 
 /// 반복 패턴
 class RepeatPattern {
-  final TodoType type;
+  final RepeatType repeatType;
   final List<int>? weekdays; // 주간 반복 시 요일 (1=월요일, 7=일요일)
-  final int? interval; // 간격 (예: 2일마다, 3주마다)
+  final List<int>? monthDays; // 월간 반복 시 날짜 (1~31, 99=마지막날)
+  final List<int>? yearMonths; // 연간 반복 시 월 (1~12)
+  final List<int>? yearDays; // 연간 반복 시 날짜 (1~31)
+  final int? customInterval; // 사용자 정의 반복 시 간격 (N일마다)
   
   const RepeatPattern({
-    required this.type,
+    required this.repeatType,
     this.weekdays,
-    this.interval,
+    this.monthDays,
+    this.yearMonths,
+    this.yearDays,
+    this.customInterval,
   });
 
   Map<String, dynamic> toMap() {
     return {
-      'type': type.name,
+      'repeatType': repeatType.name,
       'weekdays': weekdays,
-      'interval': interval,
+      'monthDays': monthDays,
+      'yearMonths': yearMonths,
+      'yearDays': yearDays,
+      'customInterval': customInterval,
     };
   }
 
   factory RepeatPattern.fromMap(Map<String, dynamic> map) {
     return RepeatPattern(
-      type: TodoType.values.firstWhere((e) => e.name == map['type']),
+      repeatType: RepeatType.values.firstWhere((e) => e.name == map['repeatType']),
       weekdays: map['weekdays']?.cast<int>(),
-      interval: map['interval'],
+      monthDays: map['monthDays']?.cast<int>(),
+      yearMonths: map['yearMonths']?.cast<int>(),
+      yearDays: map['yearDays']?.cast<int>(),
+      customInterval: map['customInterval'],
     );
   }
 }
@@ -208,6 +275,7 @@ class TodoItemModel {
   final TodoCategory category;
   final Priority priority;
   final Difficulty difficulty;
+  final DateTime? startDate;
   final DateTime? dueDate;
   final Duration? estimatedTime;
   final RepeatPattern? repeatPattern;
@@ -227,6 +295,9 @@ class TodoItemModel {
   final bool hasReminder;
   final DateTime? reminderTime;
   final int? reminderMinutesBefore;
+  
+  // 일회성 할일 표시 옵션
+  final bool showUntilCompleted; // 완료할 때까지 표시하기 (기본값: true)
 
   const TodoItemModel({
     required this.id,
@@ -237,6 +308,7 @@ class TodoItemModel {
     this.category = TodoCategory.personal,
     this.priority = Priority.medium,
     this.difficulty = Difficulty.medium,
+    this.startDate,
     this.dueDate,
     this.estimatedTime,
     this.repeatPattern,
@@ -252,6 +324,7 @@ class TodoItemModel {
     this.hasReminder = false,
     this.reminderTime,
     this.reminderMinutesBefore,
+    this.showUntilCompleted = true,
   });
 
   /// 새 투두 아이템 생성
@@ -263,6 +336,7 @@ class TodoItemModel {
     TodoCategory category = TodoCategory.personal,
     Priority priority = Priority.medium,
     Difficulty difficulty = Difficulty.medium,
+    DateTime? startDate,
     DateTime? dueDate,
     Duration? estimatedTime,
     RepeatPattern? repeatPattern,
@@ -271,6 +345,7 @@ class TodoItemModel {
     bool hasReminder = false,
     DateTime? reminderTime,
     int? reminderMinutesBefore,
+    bool showUntilCompleted = true,
   }) {
     final now = DateTime.now();
     
@@ -289,6 +364,7 @@ class TodoItemModel {
       category: category,
       priority: priority,
       difficulty: difficulty,
+      startDate: startDate,
       dueDate: dueDate,
       estimatedTime: estimatedTime,
       repeatPattern: repeatPattern,
@@ -299,6 +375,7 @@ class TodoItemModel {
       hasReminder: hasReminder,
       reminderTime: reminderTime,
       reminderMinutesBefore: reminderMinutesBefore,
+      showUntilCompleted: showUntilCompleted,
     );
   }
 
@@ -312,6 +389,7 @@ class TodoItemModel {
     TodoCategory? category,
     Priority? priority,
     Difficulty? difficulty,
+    DateTime? startDate,
     DateTime? dueDate,
     Duration? estimatedTime,
     RepeatPattern? repeatPattern,
@@ -327,6 +405,8 @@ class TodoItemModel {
     bool? hasReminder,
     DateTime? reminderTime,
     int? reminderMinutesBefore,
+    bool? showUntilCompleted,
+    bool clearStartDate = false,
     bool clearDueDate = false,
     bool clearCompletedAt = false,
     bool clearReminderTime = false,
@@ -340,6 +420,7 @@ class TodoItemModel {
       category: category ?? this.category,
       priority: priority ?? this.priority,
       difficulty: difficulty ?? this.difficulty,
+      startDate: clearStartDate ? null : (startDate ?? this.startDate),
       dueDate: clearDueDate ? null : (dueDate ?? this.dueDate),
       estimatedTime: estimatedTime ?? this.estimatedTime,
       repeatPattern: repeatPattern ?? this.repeatPattern,
@@ -355,6 +436,7 @@ class TodoItemModel {
       hasReminder: hasReminder ?? this.hasReminder,
       reminderTime: clearReminderTime ? null : (reminderTime ?? this.reminderTime),
       reminderMinutesBefore: reminderMinutesBefore ?? this.reminderMinutesBefore,
+      showUntilCompleted: showUntilCompleted ?? this.showUntilCompleted,
     );
   }
 
@@ -369,6 +451,7 @@ class TodoItemModel {
       'category': category.name,
       'priority': priority.name,
       'difficulty': difficulty.name,
+      'startDate': startDate?.millisecondsSinceEpoch,
       'dueDate': dueDate?.millisecondsSinceEpoch,
       'estimatedTime': estimatedTime?.inMinutes,
       'repeatPattern': repeatPattern?.toMap(),
@@ -384,6 +467,7 @@ class TodoItemModel {
       'hasReminder': hasReminder,
       'reminderTime': reminderTime?.millisecondsSinceEpoch,
       'reminderMinutesBefore': reminderMinutesBefore,
+      'showUntilCompleted': showUntilCompleted,
     };
   }
 
@@ -397,6 +481,7 @@ class TodoItemModel {
       category: TodoCategory.values.firstWhere((e) => e.name == map['category']),
       priority: Priority.values.firstWhere((e) => e.name == map['priority']),
       difficulty: Difficulty.values.firstWhere((e) => e.name == map['difficulty']),
+      startDate: map['startDate'] != null ? DateTime.fromMillisecondsSinceEpoch(map['startDate']) : null,
       dueDate: map['dueDate'] != null ? DateTime.fromMillisecondsSinceEpoch(map['dueDate']) : null,
       estimatedTime: map['estimatedTime'] != null ? Duration(minutes: map['estimatedTime']) : null,
       repeatPattern: map['repeatPattern'] != null ? RepeatPattern.fromMap(map['repeatPattern']) : null,
@@ -412,6 +497,7 @@ class TodoItemModel {
       hasReminder: map['hasReminder'] ?? false,
       reminderTime: map['reminderTime'] != null ? DateTime.fromMillisecondsSinceEpoch(map['reminderTime']) : null,
       reminderMinutesBefore: map['reminderMinutesBefore'],
+      showUntilCompleted: map['showUntilCompleted'] ?? true,
     );
   }
 
@@ -475,6 +561,34 @@ class TodoItemModel {
     return dueDate!.isBefore(DateTime.now());
   }
 
+  /// 시작일이 오늘인지 확인
+  bool get isStartToday {
+    if (startDate == null) return true; // 시작일이 없으면 항상 시작 가능
+    final today = DateTime.now();
+    final start = startDate!;
+    return start.year == today.year && start.month == today.month && start.day == today.day;
+  }
+
+  /// 시작일이 지났는지 확인 (시작 가능한지)
+  bool get isStarted {
+    if (startDate == null) return true; // 시작일이 없으면 항상 시작됨
+    final today = DateTime.now();
+    final todayDate = DateTime(today.year, today.month, today.day);
+    final startOnlyDate = DateTime(startDate!.year, startDate!.month, startDate!.day);
+    
+    return startOnlyDate.isBefore(todayDate) || startOnlyDate.isAtSameMomentAs(todayDate);
+  }
+
+  /// 시작 전인지 확인 (아직 시작하지 않음)
+  bool get isBeforeStart {
+    if (startDate == null) return false; // 시작일이 없으면 항상 시작됨
+    final today = DateTime.now();
+    final todayDate = DateTime(today.year, today.month, today.day);
+    final startOnlyDate = DateTime(startDate!.year, startDate!.month, startDate!.day);
+    
+    return startOnlyDate.isAfter(todayDate);
+  }
+
   /// 습관인지 확인
   bool get isHabit {
     return type == TodoType.habit;
@@ -482,7 +596,7 @@ class TodoItemModel {
 
   /// 반복 할일인지 확인
   bool get isRepeating {
-    return type == TodoType.daily || type == TodoType.weekly || isHabit;
+    return type == TodoType.repeat || isHabit;
   }
 
   /// 습관의 목표 횟수 (기본값 1)
@@ -509,6 +623,29 @@ class TodoItemModel {
   String get habitProgressText {
     if (!isHabit) return '';
     return '$currentCount / $effectiveTargetCount';
+  }
+
+  /// 미래 날짜 할일인지 확인 (오늘보다 나중에 처리해야 하는 할일)
+  bool get isFutureTodo {
+    if (dueDate == null) return false;
+    
+    final today = DateTime.now();
+    final todayDate = DateTime(today.year, today.month, today.day);
+    final dueOnlyDate = DateTime(dueDate!.year, dueDate!.month, dueDate!.day);
+    
+    return dueOnlyDate.isAfter(todayDate);
+  }
+
+  /// 오늘 또는 과거 날짜 할일인지 확인 (체크 가능한 할일)
+  bool get isCheckableToday {
+    // 이미 완료된 할일은 항상 체크 가능 (완료 취소를 위해)
+    if (isCompleted) return true;
+    
+    // 마감일이 없는 할일은 항상 체크 가능
+    if (dueDate == null) return true;
+    
+    // 미래 날짜 할일은 체크 불가
+    return !isFutureTodo;
   }
 
   @override
