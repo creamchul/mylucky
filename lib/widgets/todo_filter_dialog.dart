@@ -134,13 +134,6 @@ class _TodoFilterDialogState extends State<TodoFilterDialog> {
 
   @override
   Widget build(BuildContext context) {
-    // 다이얼로그가 빌드될 때마다 태그 목록 새로고침
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        _loadAvailableTags();
-      }
-    });
-    
     return Dialog(
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),

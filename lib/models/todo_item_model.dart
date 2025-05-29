@@ -171,9 +171,9 @@ extension PriorityExtension on Priority {
       case Priority.low:
         return '낮음';
       case Priority.medium:
-        return '보통';
+        return '일반';
       case Priority.high:
-        return '높음';
+        return '급함';
     }
   }
 }
@@ -605,12 +605,12 @@ class TodoItemModel {
     return targetCount ?? 1;
   }
 
-  /// 습관의 진행률 (0.0 ~ 1.0)
+  /// 습관의 진행률 (0.0 이상, 목표 초과 시 1.0 이상 가능)
   double get habitProgress {
     if (!isHabit) return 0.0;
     final target = effectiveTargetCount;
     if (target <= 0) return 0.0;
-    return (currentCount / target).clamp(0.0, 1.0);
+    return (currentCount / target).clamp(0.0, double.infinity);
   }
 
   /// 습관이 목표 달성했는지 확인
@@ -641,11 +641,86 @@ class TodoItemModel {
     // 이미 완료된 할일은 항상 체크 가능 (완료 취소를 위해)
     if (isCompleted) return true;
     
+    // 시작일이 미래면 체크 불가 (모든 타입 공통)
+    if (isBeforeStart) return false;
+    
+    // 반복 할일이나 습관의 경우
+    if (isRepeating) {
+      // 마감일이 과거면 체크 불가
+      if (dueDate != null && isOverdue) return false;
+      
+      // 반복 패턴이 있는 경우 오늘 해당하는지 확인
+      if (repeatPattern != null) {
+        return _isForToday();
+      }
+      
+      // 반복 패턴이 없는 습관은 매일 체크 가능
+      if (isHabit && repeatPattern == null) {
+        return true;
+      }
+      
+      // 그 외에는 체크 가능 (시작일~마감일 사이)
+      return true;
+    }
+    
+    // 일회성 할일의 경우도 마감일이 미래여도 완료 가능
     // 마감일이 없는 할일은 항상 체크 가능
     if (dueDate == null) return true;
     
-    // 미래 날짜 할일은 체크 불가
-    return !isFutureTodo;
+    // 마감일이 과거면 체크 불가
+    if (isOverdue) return false;
+    
+    // 그 외에는 모두 체크 가능 (미래 마감일도 포함)
+    return true;
+  }
+
+  /// 반복 패턴에 따라 오늘 해당하는지 확인
+  bool _isForToday() {
+    if (repeatPattern == null) return true;
+    
+    final today = DateTime.now();
+    
+    switch (repeatPattern!.repeatType) {
+      case RepeatType.daily:
+        return true; // 매일 반복이므로 항상 해당
+        
+      case RepeatType.weekly:
+        // 주간 반복: 오늘 요일이 선택된 요일에 포함되어야 함
+        if (repeatPattern!.weekdays != null) {
+          return repeatPattern!.weekdays!.contains(today.weekday);
+        }
+        return false;
+        
+      case RepeatType.monthly:
+        // 월간 반복: 오늘 날짜가 선택된 날짜에 포함되어야 함
+        if (repeatPattern!.monthDays != null) {
+          final todayDay = today.day;
+          final lastDayOfMonth = DateTime(today.year, today.month + 1, 0).day;
+          
+          for (final day in repeatPattern!.monthDays!) {
+            if (day == 99 && todayDay == lastDayOfMonth) return true; // 마지막 날
+            if (day == todayDay) return true;
+          }
+        }
+        return false;
+        
+      case RepeatType.yearly:
+        // 연간 반복: 오늘 월/일이 선택된 월/일에 포함되어야 함
+        if (repeatPattern!.yearMonths != null && repeatPattern!.yearDays != null) {
+          return repeatPattern!.yearMonths!.contains(today.month) &&
+                 repeatPattern!.yearDays!.contains(today.day);
+        }
+        return false;
+        
+      case RepeatType.custom:
+        // 사용자 정의: 생성일로부터 간격 계산
+        if (repeatPattern!.customInterval != null) {
+          final interval = repeatPattern!.customInterval!;
+          final daysSinceCreation = today.difference(createdAt).inDays;
+          return daysSinceCreation % interval == 0;
+        }
+        return false;
+    }
   }
 
   @override

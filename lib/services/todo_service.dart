@@ -163,7 +163,7 @@ class TodoService {
         }
       }
 
-      // 필터링
+      // 필터링 (시작일이 미래인 할일도 포함 - 전체 리스트에서는 표시)
       if (category != null) {
         todos = todos.where((todo) => todo.category == category).toList();
       }
@@ -227,6 +227,11 @@ class TodoService {
       final today = DateTime.now();
       
       final todayTodos = allTodos.where((todo) {
+        // 완료된 할일은 여기서 제외 (completedTodayTodos에서 별도 처리)
+        if (todo.isCompleted) {
+          return false;
+        }
+        
         // 시작 전인 할일은 제외 (시작일이 미래인 경우)
         if (todo.isBeforeStart) {
           return false;
@@ -234,7 +239,7 @@ class TodoService {
         
         // 일회성: showUntilCompleted 옵션에 따라 처리
         if (todo.type == TodoType.oneTime) {
-          if (!todo.isCompleted && todo.isStarted) {
+          if (todo.isStarted) {
             if (todo.showUntilCompleted) {
               // 완료할 때까지 표시: 시작일이 지났으면 계속 표시
               return true;
@@ -255,34 +260,49 @@ class TodoService {
           return false;
         }
         
-        // 습관: 오늘 마감인 습관은 완료 여부와 관계없이 표시 (시작일이 지났거나 오늘인 경우)
+        // 습관: 시작일이 지났고 마감일이 아직 지나지 않았으면 표시
         if (todo.type == TodoType.habit) {
           // 시작일이 지나지 않았으면 표시하지 않음
           if (!todo.isStarted) {
             return false;
           }
           
-          // 마감일이 오늘이 아니면 표시하지 않음
-          if (!todo.isDueToday && todo.dueDate != null) {
-            return false;
+          // 마감일이 있고 이미 지났으면 표시하지 않음
+          if (todo.dueDate != null) {
+            final todayDate = DateTime(today.year, today.month, today.day);
+            final dueOnlyDate = DateTime(todo.dueDate!.year, todo.dueDate!.month, todo.dueDate!.day);
+            
+            if (dueOnlyDate.isBefore(todayDate)) {
+              return false; // 마감일이 이미 지났음
+            }
           }
           
-          // 오늘 마감이거나 마감일이 없는 습관은 완료 여부와 관계없이 표시
-          return todo.isDueToday || todo.dueDate == null;
+          // 반복 패턴에 따라 오늘 해당하는지 확인
+          return _isTodoForToday(todo);
         }
         
-        // 오늘 기한인 할일 (미완료만, 시작일이 지났거나 오늘인 경우)
-        if (todo.isDueToday && !todo.isCompleted && todo.isStarted) return true;
+        // 오늘 기한인 할일 (시작일이 지났거나 오늘인 경우)
+        if (todo.isDueToday && todo.isStarted) return true;
         
-        // 반복 할일 체크 (미완료이고 오늘이 해당 요일인 경우만, 시작일이 지났거나 오늘인 경우)
-        if (todo.isRepeating && !todo.isCompleted && todo.isStarted) {
+        // 반복 할일 체크 (시작일이 지났고 마감일이 아직 지나지 않은 경우)
+        if (todo.isRepeating && todo.isStarted) {
           switch (todo.type) {
             case TodoType.repeat:
-              // 반복 할일 - 반복 패턴에 따라 오늘 해당하는지 확인
+              // 마감일이 있고 이미 지났으면 표시하지 않음
+              if (todo.dueDate != null) {
+                final todayDate = DateTime(today.year, today.month, today.day);
+                final dueOnlyDate = DateTime(todo.dueDate!.year, todo.dueDate!.month, todo.dueDate!.day);
+                
+                if (dueOnlyDate.isBefore(todayDate)) {
+                  return false; // 마감일이 이미 지났음
+                }
+              }
+              
+              // 반복 패턴에 따라 오늘 해당하는지 확인
               return _isTodoForToday(todo);
             case TodoType.habit:
-              // 매일 반복: 오늘 날짜인 경우만 표시
-              return todo.isDueToday || todo.dueDate == null;
+              // 이미 위에서 처리됨
+              return false;
             default:
               return false;
           }
@@ -290,7 +310,7 @@ class TodoService {
         return false;
       }).toList();
 
-      // 오늘 완료된 투두들도 포함 (일회성 + 반복 할일, 습관은 이미 위에서 처리됨)
+      // 오늘 완료된 투두들도 포함 (모든 타입)
       final completedTodayTodos = allTodos.where((todo) {
         if (todo.isCompleted && todo.completedAt != null) {
           final completedDate = todo.completedAt!;
@@ -299,32 +319,8 @@ class TodoService {
                                    completedDate.day == today.day;
           
           if (isCompletedToday) {
-            // 일회성 투두는 항상 포함
-            if (todo.type == TodoType.oneTime) {
+            // 모든 타입의 오늘 완료된 할일 포함 (일회성, 반복, 습관)
               return true;
-            }
-            
-            // 습관은 이미 todayTodos에서 처리되므로 여기서는 제외
-            if (todo.type == TodoType.habit) {
-              return false;
-            }
-            
-            // 반복 할일도 오늘 완료된 것은 포함
-            if (todo.isRepeating) {
-              switch (todo.type) {
-                case TodoType.repeat:
-                  return true;
-                case TodoType.habit:
-                  // 주간 반복: 오늘이 반복 요일에 포함되어 있으면 포함
-                  if (todo.repeatPattern?.weekdays != null &&
-                      todo.repeatPattern!.weekdays!.contains(today.weekday)) {
-                    return true;
-                  }
-                  return false;
-                default:
-                  return false;
-              }
-            }
           }
         }
         return false;
@@ -410,7 +406,8 @@ class TodoService {
       final completedTodo = todo.copyWith(
         isCompleted: true,
         completedAt: now,
-        currentCount: todo.currentCount + 1,
+        // 습관의 경우 incrementHabitProgress에서 이미 currentCount가 증가되었으므로 다시 증가시키지 않음
+        currentCount: todo.isHabit ? todo.currentCount : (todo.currentCount + 1),
         streak: finalStreak,
         bestStreak: finalBestStreak,
       );
@@ -429,19 +426,19 @@ class TodoService {
       //   }
       // }
 
-      // 반복 할일인 경우 다음 인스턴스 생성
-      if (todo.isRepeating) {
-        try {
-          await createNextRepeatInstance(completedTodo);
-          if (kDebugMode) {
-            print('TodoService: 다음 반복 인스턴스 생성 완료');
-          }
-        } catch (e) {
-          if (kDebugMode) {
-            print('TodoService: 다음 반복 인스턴스 생성 실패 - $e');
-          }
-        }
-      }
+      // 반복 할일 다음 인스턴스 생성 비활성화 (일회성처럼 처리)
+      // if (todo.isRepeating) {
+      //   try {
+      //     await createNextRepeatInstance(completedTodo);
+      //     if (kDebugMode) {
+      //       print('TodoService: 다음 반복 인스턴스 생성 완료');
+      //     }
+      //   } catch (e) {
+      //     if (kDebugMode) {
+      //       print('TodoService: 다음 반복 인스턴스 생성 실패 - $e');
+      //     }
+      //   }
+      // }
 
       // 습관 타입인 경우 습관 완료 보상 지급 - 임시 비활성화
       if (completedTodo.isHabit) {
@@ -558,9 +555,9 @@ class TodoService {
           print('TodoService: 습관 목표 달성! 자동 완료 처리 - ${todo.title}');
         }
         
-        // 완료 처리를 위해 먼저 진행률을 업데이트
+        // 완료 처리를 위해 먼저 진행률을 업데이트 (목표 횟수로 제한)
         final updatedTodo = todo.copyWith(
-          currentCount: newCount,
+          currentCount: targetCount, // 목표 초과하지 않도록 제한
           updatedAt: DateTime.now(),
         );
 
@@ -636,12 +633,16 @@ class TodoService {
     required String todoId,
     String? title,
     String? description,
+    TodoType? type,
     TodoCategory? category,
     Priority? priority,
     Difficulty? difficulty,
     DateTime? startDate,
     DateTime? dueDate,
     Duration? estimatedTime,
+    RepeatPattern? repeatPattern,
+    List<String>? tags,
+    int? targetCount,
     bool? hasReminder,
     DateTime? reminderTime,
     int? reminderMinutesBefore,
@@ -661,12 +662,16 @@ class TodoService {
       final updatedTodo = todos[todoIndex].copyWith(
         title: title,
         description: description,
+        type: type,
         category: category,
         priority: priority,
         difficulty: difficulty,
         startDate: startDate,
         dueDate: dueDate,
         estimatedTime: estimatedTime,
+        repeatPattern: repeatPattern,
+        tags: tags,
+        targetCount: targetCount,
         hasReminder: hasReminder,
         reminderTime: reminderTime,
         reminderMinutesBefore: reminderMinutesBefore,
@@ -1120,6 +1125,11 @@ class TodoService {
 
   /// 반복 할일이 오늘에 해당하는지 확인
   static bool _isTodoForToday(TodoItemModel todo) {
+    // 습관의 경우 반복 패턴이 없으면 매일 표시 (기본 동작)
+    if (todo.type == TodoType.habit && todo.repeatPattern == null) {
+      return true;
+    }
+    
     if (todo.repeatPattern == null) return false;
     
     final today = DateTime.now();

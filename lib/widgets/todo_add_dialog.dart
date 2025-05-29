@@ -29,6 +29,7 @@ class _TodoAddDialogState extends State<TodoAddDialog> {
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _habitTargetController = TextEditingController();
+  final _targetCountController = TextEditingController();
   
   TodoType _selectedType = TodoType.oneTime;
   TodoCategory _selectedCategory = TodoCategory.personal;
@@ -56,7 +57,7 @@ class _TodoAddDialogState extends State<TodoAddDialog> {
   
   // 알림 설정
   bool _hasReminder = false;
-  int _reminderMinutesBefore = 30;
+  TimeOfDay _reminderTime = const TimeOfDay(hour: 9, minute: 0); // 기본값: 오전 9시
   
   // 일회성 할일 옵션
   bool _showUntilCompleted = true;
@@ -72,6 +73,7 @@ class _TodoAddDialogState extends State<TodoAddDialog> {
     _titleController.dispose();
     _descriptionController.dispose();
     _habitTargetController.dispose();
+    _targetCountController.dispose();
     super.dispose();
   }
 
@@ -703,10 +705,21 @@ class _TodoAddDialogState extends State<TodoAddDialog> {
       context: context,
       initialDate: _selectedStartDate ?? DateTime.now(),
       firstDate: DateTime.now().subtract(const Duration(days: 365)),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
+      lastDate: _selectedDueDate ?? DateTime.now().add(const Duration(days: 365)),
     );
     
     if (date != null) {
+      // 시작일이 마감일보다 뒤에 있으면 경고
+      if (_selectedDueDate != null && date.isAfter(_selectedDueDate!)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('시작일은 마감일보다 뒤에 설정할 수 없습니다.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+      
       setState(() {
         _selectedStartDate = date;
       });
@@ -814,12 +827,23 @@ class _TodoAddDialogState extends State<TodoAddDialog> {
   void _selectDueDate() async {
     final date = await showDatePicker(
       context: context,
-      initialDate: _selectedDueDate ?? DateTime.now(),
-      firstDate: DateTime.now(),
+      initialDate: _selectedDueDate ?? (_selectedStartDate ?? DateTime.now()),
+      firstDate: _selectedStartDate ?? DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 365)),
     );
     
     if (date != null) {
+      // 마감일이 시작일보다 앞에 있으면 경고
+      if (_selectedStartDate != null && date.isBefore(_selectedStartDate!)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('마감일은 시작일보다 앞에 설정할 수 없습니다.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+      
       setState(() {
         _selectedDueDate = date;
       });
@@ -982,6 +1006,7 @@ class _TodoAddDialogState extends State<TodoAddDialog> {
                         onTap: () {
                           setState(() {
                             _targetCount = count;
+                            _targetCountController.text = count.toString();
                           });
                         },
                         child: Container(
@@ -1022,6 +1047,7 @@ class _TodoAddDialogState extends State<TodoAddDialog> {
               ),
               const SizedBox(height: 8),
               TextFormField(
+                controller: _targetCountController,
                 keyboardType: TextInputType.number,
                 decoration: InputDecoration(
                   hintText: '기본값: 1회',
@@ -1324,35 +1350,172 @@ class _TodoAddDialogState extends State<TodoAddDialog> {
         ),
         if (_hasReminder) ...[
           const SizedBox(height: 8),
-          DropdownButtonFormField<int>(
-            value: _reminderMinutesBefore,
-            decoration: InputDecoration(
-              labelText: '알림 시간',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: AppColors.purple600),
-              ),
+          Text(
+            '오늘 할일에 표시될 때 설정한 시간에 알림이 울립니다',
+            style: TextStyle(
+              fontSize: 12,
+              color: AppColors.grey600,
             ),
-            items: [5, 10, 15, 30, 60, 120].map((minutes) {
-              return DropdownMenuItem(
-                value: minutes,
-                child: Text('${minutes}분 전'),
-              );
-            }).toList(),
-            onChanged: (value) {
-              if (value != null) {
-                setState(() {
-                  _reminderMinutesBefore = value;
-                });
-              }
-            },
+          ),
+          const SizedBox(height: 8),
+          
+          // 시간 선택 카드
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.grey50,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.grey400),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '알림 시간',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.grey600,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                
+                // 시간 선택 버튼
+                GestureDetector(
+                  onTap: _selectReminderTime,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.purple600),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.access_time,
+                          color: AppColors.purple600,
+                          size: 20,
+            ),
+                        const SizedBox(width: 8),
+                        Text(
+                          _formatTime(_reminderTime),
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.purple600,
+                          ),
+                        ),
+                        const Spacer(),
+                        Icon(
+                          Icons.keyboard_arrow_down,
+                          color: AppColors.purple600,
+                          size: 20,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                
+                const SizedBox(height: 8),
+                
+                // 빠른 선택 버튼들
+                Text(
+                  '빠른 선택',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.grey600,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _buildQuickTimeButton('오전 7:00', const TimeOfDay(hour: 7, minute: 0)),
+                    _buildQuickTimeButton('오전 9:00', const TimeOfDay(hour: 9, minute: 0)),
+                    _buildQuickTimeButton('오후 12:00', const TimeOfDay(hour: 12, minute: 0)),
+                    _buildQuickTimeButton('오후 3:00', const TimeOfDay(hour: 15, minute: 0)),
+                    _buildQuickTimeButton('오후 6:00', const TimeOfDay(hour: 18, minute: 0)),
+                    _buildQuickTimeButton('오후 9:00', const TimeOfDay(hour: 21, minute: 0)),
+                  ],
+                ),
+              ],
+            ),
           ),
         ],
       ],
     );
+  }
+
+  Widget _buildQuickTimeButton(String label, TimeOfDay time) {
+    final isSelected = _reminderTime.hour == time.hour && _reminderTime.minute == time.minute;
+    
+    return GestureDetector(
+      onTap: () {
+                setState(() {
+          _reminderTime = time;
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.purple600.withOpacity(0.1) : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isSelected ? AppColors.purple600 : AppColors.grey400,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+            color: isSelected ? AppColors.purple600 : AppColors.grey700,
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _selectReminderTime() async {
+    final time = await showTimePicker(
+      context: context,
+      initialTime: _reminderTime,
+      initialEntryMode: TimePickerEntryMode.input,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: Theme.of(context).colorScheme.copyWith(
+              primary: AppColors.purple600,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    
+    if (time != null) {
+      setState(() {
+        _reminderTime = time;
+      });
+    }
+  }
+
+  String _formatTime(TimeOfDay time) {
+    final hour = time.hour;
+    final minute = time.minute.toString().padLeft(2, '0');
+    
+    if (hour == 0) {
+      return '오전 12:$minute';
+    } else if (hour < 12) {
+      return '오전 $hour:$minute';
+    } else if (hour == 12) {
+      return '오후 12:$minute';
+    } else {
+      return '오후 ${hour - 12}:$minute';
+    }
   }
 
   void _saveTodo() {
@@ -1490,7 +1653,7 @@ class _TodoAddDialogState extends State<TodoAddDialog> {
       tags: _tags,
       targetCount: _targetCount,
       hasReminder: _hasReminder,
-      reminderMinutesBefore: _hasReminder ? _reminderMinutesBefore : null,
+      reminderTime: _hasReminder ? DateTime(2024, 1, 1, _reminderTime.hour, _reminderTime.minute) : null,
       showUntilCompleted: _showUntilCompleted,
     );
 

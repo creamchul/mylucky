@@ -12,7 +12,9 @@ class FocusService {
   // 새로운 집중 세션 생성
   static Future<FocusSessionModel> createSession({
     required String userId,
+    required FocusMode focusMode,
     required int durationMinutes,
+    String? categoryId,
     TreeType treeType = TreeType.basic,
   }) async {
     try {
@@ -21,6 +23,8 @@ class FocusService {
       final newSession = FocusSessionModel(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         userId: userId,
+        categoryId: categoryId,
+        focusMode: focusMode,
         durationMinutesSet: durationMinutes,
         treeType: treeType,
       );
@@ -29,7 +33,7 @@ class FocusService {
       await prefs.setString(_activeSessionKey, jsonEncode(newSession.toMap()));
       
       if (kDebugMode) {
-        print('집중 세션 생성 성공: ${newSession.id}');
+        print('집중 세션 생성 성공: ${newSession.id} (${focusMode == FocusMode.timer ? '타이머' : '스톱워치'} 모드)${categoryId != null ? ' - 카테고리: $categoryId' : ''}');
       }
       
       return newSession;
@@ -190,7 +194,7 @@ class FocusService {
     try {
       final completedSession = session.copyWith(
         status: FocusSessionStatus.completed,
-        elapsedSeconds: session.durationSecondsSet,
+        elapsedSeconds: session.isStopwatchMode ? session.elapsedSeconds : session.durationSecondsSet,
         endedAt: DateTime.now(),
       );
       
@@ -201,13 +205,19 @@ class FocusService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_activeSessionKey);
 
-      // 리워드 포인트 지급
-      int reward = session.durationMinutesSet;
+      // 리워드 포인트 지급 (모드별 계산)
+      int reward;
+      if (session.isStopwatchMode) {
+        reward = session.stopwatchRewardPoints;
+      } else {
+        reward = session.durationMinutesSet; // 타이머 모드: 설정 시간 = 포인트
+      }
+      
       final updatedUser = currentUser.copyWith(rewardPoints: currentUser.rewardPoints + reward);
       await UserService.updateUser(updatedUser);
 
       if (kDebugMode) {
-        print('집중 완료 처리 성공: ${completedSession.id}');
+        print('집중 완료 처리 성공: ${completedSession.id} (보상: ${reward}P)');
       }
 
       return completedSession;

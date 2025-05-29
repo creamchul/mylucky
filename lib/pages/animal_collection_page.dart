@@ -609,6 +609,8 @@ class _AnimalCollectionPageState extends State<AnimalCollectionPage>
                     if (isDiscovered) ...[
                       // 수집 정보
                       _buildDetailRow('상태', collected!.statusDescription),
+                      _buildDetailRow('레벨', 'Lv.${collected.completedLevel}'),
+                      _buildDetailRow('총 클릭수', '${collected.totalClicks}회'),
                       _buildDetailRow('발견일', _formatDate(collected.discoveredDate)),
                       if (collected.isCompleted && collected.completedDate != null)
                         _buildDetailRow('완성일', _formatDate(collected.completedDate!)),

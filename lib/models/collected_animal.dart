@@ -8,6 +8,7 @@ class CollectedAnimal {
   final DateTime? completedDate;
   final int totalClicks;
   final int daysSpent;
+  final int completedLevel;  // 도감 등록 시 레벨
 
   const CollectedAnimal({
     required this.speciesId,
@@ -16,6 +17,7 @@ class CollectedAnimal {
     this.completedDate,
     this.totalClicks = 0,
     this.daysSpent = 0,
+    this.completedLevel = 1,
   });
 
   // 팩토리 생성자 - 완료된 동물
@@ -23,6 +25,7 @@ class CollectedAnimal {
     required String speciesId,
     required String nickname,
     int totalClicks = 0,
+    int completedLevel = 1,
   }) {
     final now = DateTime.now();
     return CollectedAnimal(
@@ -32,6 +35,7 @@ class CollectedAnimal {
       completedDate: now,
       totalClicks: totalClicks,
       daysSpent: 1, // 최소 1일
+      completedLevel: completedLevel,
     );
   }
 
@@ -41,7 +45,7 @@ class CollectedAnimal {
   // 상태 설명
   String get statusDescription {
     if (isCompleted) {
-      return '키우기 완료! ✨';
+      return 'Lv.$completedLevel에서 키우기 완료! ✨';
     } else {
       return '키우는 중...';
     }
@@ -56,6 +60,7 @@ class CollectedAnimal {
       'completedDate': completedDate?.millisecondsSinceEpoch,
       'totalClicks': totalClicks,
       'daysSpent': daysSpent,
+      'completedLevel': completedLevel,
     };
   }
 
@@ -70,6 +75,7 @@ class CollectedAnimal {
           : null,
       totalClicks: json['totalClicks'] as int? ?? 0,
       daysSpent: json['daysSpent'] as int? ?? 0,
+      completedLevel: json['completedLevel'] as int? ?? 1,
     );
   }
 

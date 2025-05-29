@@ -45,6 +45,14 @@ class _TodoListPageState extends State<TodoListPage>
   // 필터링 상태
   TodoFilterState _currentFilter = const TodoFilterState();
   
+  // 캐시된 필터링 결과
+  List<TodoItemModel>? _cachedFilteredTodayTodos;
+  List<TodoItemModel>? _cachedFilteredAllTodos;
+  List<TodoItemModel>? _cachedFilteredCompletedTodos;
+  TodoFilterState? _lastFilterForCache;
+  List<TodoItemModel>? _lastTodosForCache;
+  List<TodoItemModel>? _lastTodayTodosForCache;
+  
   // 애니메이션 컨트롤러
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
@@ -120,6 +128,8 @@ class _TodoListPageState extends State<TodoListPage>
           _todos = todos;
           _todayTodos = todayTodos;
           _isLoading = false;
+          // 데이터가 변경되었으므로 캐시 무효화
+          _invalidateCache();
         });
       }
 
@@ -156,6 +166,72 @@ class _TodoListPageState extends State<TodoListPage>
     });
   }
 
+  /// 캐시 무효화
+  void _invalidateCache() {
+    _cachedFilteredTodayTodos = null;
+    _cachedFilteredAllTodos = null;
+    _cachedFilteredCompletedTodos = null;
+    _lastFilterForCache = null;
+    _lastTodosForCache = null;
+    _lastTodayTodosForCache = null;
+  }
+
+  /// 캐시가 유효한지 확인
+  bool _isCacheValid() {
+    return _lastFilterForCache == _currentFilter &&
+           _lastTodosForCache == _todos &&
+           _lastTodayTodosForCache == _todayTodos;
+  }
+
+  /// 오늘의 할일 필터링 (캐시 사용)
+  List<TodoItemModel> _getFilteredTodayTodos() {
+    if (_cachedFilteredTodayTodos != null && _isCacheValid()) {
+      return _cachedFilteredTodayTodos!;
+    }
+
+    var filteredTodayTodos = List<TodoItemModel>.from(_todayTodos);
+    
+    // 할일 유형 필터
+    if (_currentFilter.type != null) {
+      filteredTodayTodos = filteredTodayTodos.where((todo) => todo.type == _currentFilter.type).toList();
+    }
+    
+    // 카테고리 필터
+    if (_currentFilter.category != null) {
+      filteredTodayTodos = filteredTodayTodos.where((todo) => todo.category == _currentFilter.category).toList();
+    }
+    
+    // 우선순위 필터
+    if (_currentFilter.priority != null) {
+      filteredTodayTodos = filteredTodayTodos.where((todo) => todo.priority == _currentFilter.priority).toList();
+    }
+    
+    // 난이도 필터
+    if (_currentFilter.difficulty != null) {
+      filteredTodayTodos = filteredTodayTodos.where((todo) => todo.difficulty == _currentFilter.difficulty).toList();
+    }
+    
+    // 완료 상태 필터
+    if (_currentFilter.isCompleted != null) {
+      filteredTodayTodos = filteredTodayTodos.where((todo) => todo.isCompleted == _currentFilter.isCompleted).toList();
+    }
+    
+    // 태그 필터
+    if (_currentFilter.tags.isNotEmpty) {
+      filteredTodayTodos = filteredTodayTodos.where((todo) {
+        return _currentFilter.tags.any((filterTag) => todo.tags.contains(filterTag));
+      }).toList();
+    }
+
+    // 캐시 업데이트
+    _cachedFilteredTodayTodos = filteredTodayTodos;
+    _lastFilterForCache = _currentFilter;
+    _lastTodosForCache = _todos;
+    _lastTodayTodosForCache = _todayTodos;
+
+    return filteredTodayTodos;
+  }
+
   // ========================================
   // 투두 액션
   // ========================================
@@ -174,10 +250,10 @@ class _TodoListPageState extends State<TodoListPage>
         _currentUser = result['user'] as UserModel;
       });
 
-      // 반복 할일인 경우 다음 인스턴스 생성
-      if (todo.isRepeating) {
-        await TodoService.createNextRepeatInstance(result['todo'] as TodoItemModel);
-      }
+      // 반복 할일 다음 인스턴스 생성 비활성화 (일회성처럼 처리)
+      // if (todo.isRepeating) {
+      //   await TodoService.createNextRepeatInstance(result['todo'] as TodoItemModel);
+      // }
 
       // 목록 새로고침
       await _refreshTodos();
@@ -572,41 +648,7 @@ class _TodoListPageState extends State<TodoListPage>
 
   /// 오늘 탭 빌드
   Widget _buildTodayTab() {
-    // 오늘 할일에도 필터 적용
-    var filteredTodayTodos = List<TodoItemModel>.from(_todayTodos);
-    
-    // 할일 유형 필터
-    if (_currentFilter.type != null) {
-      filteredTodayTodos = filteredTodayTodos.where((todo) => todo.type == _currentFilter.type).toList();
-    }
-    
-    // 카테고리 필터
-    if (_currentFilter.category != null) {
-      filteredTodayTodos = filteredTodayTodos.where((todo) => todo.category == _currentFilter.category).toList();
-    }
-    
-    // 우선순위 필터
-    if (_currentFilter.priority != null) {
-      filteredTodayTodos = filteredTodayTodos.where((todo) => todo.priority == _currentFilter.priority).toList();
-    }
-    
-    // 난이도 필터
-    if (_currentFilter.difficulty != null) {
-      filteredTodayTodos = filteredTodayTodos.where((todo) => todo.difficulty == _currentFilter.difficulty).toList();
-    }
-    
-    // 완료 상태 필터
-    if (_currentFilter.isCompleted != null) {
-      filteredTodayTodos = filteredTodayTodos.where((todo) => todo.isCompleted == _currentFilter.isCompleted).toList();
-    }
-    
-    // 태그 필터
-    if (_currentFilter.tags.isNotEmpty) {
-      filteredTodayTodos = filteredTodayTodos.where((todo) {
-        // 선택된 태그 중 하나라도 포함하면 표시
-        return _currentFilter.tags.any((filterTag) => todo.tags.contains(filterTag));
-      }).toList();
-    }
+    final filteredTodayTodos = _getFilteredTodayTodos();
 
     if (filteredTodayTodos.isEmpty) {
       return _buildEmptyState(
@@ -716,7 +758,11 @@ class _TodoListPageState extends State<TodoListPage>
 
   /// 투두 아이템 빌드
   Widget _buildTodoItem(TodoItemModel todo) {
-    final isFuture = todo.isFutureTodo;
+    final isBeforeStart = todo.isBeforeStart;
+    
+    // 체크할 수 없는 할일인지 확인 (반복 패턴 때문에 오늘 해당하지 않는 경우 포함)
+    final isCheckable = todo.isCheckableToday;
+    final shouldShowAsDisabled = !isCheckable && !todo.isCompleted;
     
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -724,10 +770,12 @@ class _TodoListPageState extends State<TodoListPage>
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
       ),
-      // 미래 날짜 할일은 약간 투명하게 표시
-      color: isFuture && !todo.isCompleted 
-          ? AppColors.grey50.withOpacity(0.7)
-          : null,
+      // 완료된 할일은 연한 녹색, 비활성화된 할일은 회색으로 표시
+      color: todo.isCompleted 
+          ? Colors.green.shade50
+          : (shouldShowAsDisabled 
+              ? AppColors.grey50.withOpacity(0.7)
+              : null),
       child: ListTile(
         contentPadding: const EdgeInsets.all(16),
         leading: _buildTodoLeading(todo),
@@ -739,18 +787,19 @@ class _TodoListPageState extends State<TodoListPage>
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
-                  decoration: todo.isCompleted ? TextDecoration.lineThrough : null,
+                  // 줄 긋기 제거
+                  decoration: null,
                   color: todo.isCompleted 
-                      ? AppColors.grey600 
-                      : (isFuture ? AppColors.grey500 : AppColors.grey800),
+                      ? AppColors.green700  // 완료된 할일은 진한 녹색 텍스트
+                      : (shouldShowAsDisabled ? AppColors.grey500 : AppColors.grey800),
                 ),
               ),
             ),
-            // 미래 날짜 할일 표시 아이콘
-            if (isFuture && !todo.isCompleted) ...[
+            // 비활성화된 할일 표시 아이콘
+            if (shouldShowAsDisabled) ...[
               const SizedBox(width: 8),
               Icon(
-                Icons.schedule,
+                isBeforeStart ? Icons.pause_circle_outline : (todo.isRepeating && todo.repeatPattern != null ? Icons.event_busy : Icons.schedule),
                 size: 16,
                 color: AppColors.grey500,
               ),
@@ -760,43 +809,13 @@ class _TodoListPageState extends State<TodoListPage>
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 미래 날짜 할일 안내 메시지
-            if (isFuture && !todo.isCompleted) ...[
-              const SizedBox(height: 4),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.orange400.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.info_outline,
-                      size: 14,
-                      color: AppColors.orange700,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      '마감일에 처리 가능',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppColors.orange700,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
             if (todo.description.isNotEmpty) ...[
               const SizedBox(height: 4),
               Text(
                 todo.description,
                 style: TextStyle(
                   fontSize: 14,
-                  color: isFuture ? AppColors.grey400 : AppColors.grey600,
+                  color: shouldShowAsDisabled ? AppColors.grey400 : AppColors.grey600,
                 ),
               ),
             ],
@@ -805,6 +824,23 @@ class _TodoListPageState extends State<TodoListPage>
               const SizedBox(height: 8),
               _buildHabitProgress(todo),
             ],
+            // 시작일 표시
+            if (todo.startDate != null) ...[
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  Icon(Icons.play_arrow, size: 16, color: AppColors.green600),
+                  const SizedBox(width: 4),
+                  Text(
+                    '시작: '
+                    + '${todo.startDate!.year}.${todo.startDate!.month.toString().padLeft(2, '0')}.${todo.startDate!.day.toString().padLeft(2, '0')}'
+                    + (todo.startDate!.hour != 0 || todo.startDate!.minute != 0 ? ' ${todo.startDate!.hour.toString().padLeft(2, '0')}:${todo.startDate!.minute.toString().padLeft(2, '0')}' : ''),
+                    style: TextStyle(fontSize: 12, color: AppColors.green600),
+                  ),
+                ],
+              ),
+            ],
+            // 마감일 표시
             if (todo.dueDate != null) ...[
               const SizedBox(height: 4),
               Row(
@@ -835,72 +871,70 @@ class _TodoListPageState extends State<TodoListPage>
                 ],
               ),
             ],
-            const SizedBox(height: 8),
-            Row(
+            const SizedBox(height: 6),
+            // 모든 태그들을 한 줄에 표시 (Wrap 사용)
+            Wrap(
+              spacing: 6,
+              runSpacing: 4,
               children: [
-                // 할일 유형
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.blue400.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    '${todo.type.emoji} ${todo.type.displayName}',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppColors.blue700,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                // 카테고리
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.purple400.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    '${todo.categoryEmoji} ${todo.categoryName}',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppColors.purple700,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
                 // 우선순위
-                Text(
-                  todo.priorityEmoji,
-                  style: const TextStyle(fontSize: 16),
+                _buildCompactTag(
+                  '${todo.priorityEmoji} ${todo.priority.displayName}',
+                  _getPriorityColor(todo.priority),
                 ),
-                const SizedBox(width: 8),
+                // 할일 유형 + 반복 유형
+                _buildCompactTag(
+                  '${todo.type.emoji} ${todo.type.displayName}${(todo.type == TodoType.repeat || todo.type == TodoType.habit) && todo.repeatPattern != null ? '(${todo.repeatPattern!.repeatType.displayName})' : ''}',
+                  AppColors.blue700,
+                ),
+                // 카테고리
+                _buildCompactTag(
+                  '${todo.categoryEmoji} ${todo.categoryName}',
+                  AppColors.purple700,
+                ),
                 // 난이도
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: _getDifficultyColor(todo.difficulty).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    todo.difficulty.displayName,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: _getDifficultyColor(todo.difficulty),
-                    ),
-                  ),
+                _buildCompactTag(
+                  todo.difficulty.displayName,
+                  _getDifficultyColor(todo.difficulty),
                 ),
+                // 예상 소요 시간
+                if (todo.estimatedTime != null)
+                  _buildCompactTag(
+                    '⏱️ ${_formatEstimatedTime(todo.estimatedTime!)}',
+                    AppColors.green700,
+                  ),
+                // 사용자 태그들
+                ...todo.tags.map((tag) => _buildCompactTag('#$tag', AppColors.grey700)),
               ],
             ),
-            // 태그 표시
-            if (todo.tags.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 6,
-                runSpacing: 4,
-                children: todo.tags.map((tag) => _buildTagChip(tag)).toList(),
+            // 처리할 수 없는 이유 안내 메시지를 맨 아래로 이동
+            if (shouldShowAsDisabled) ...[
+              const SizedBox(height: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.orange400.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.info_outline,
+                      size: 14,
+                      color: AppColors.orange700,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      _getDisabledReason(todo),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.orange700,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ],
@@ -955,8 +989,8 @@ class _TodoListPageState extends State<TodoListPage>
                   ),
                 ],
         ),
-        // 습관일 때 터치로 진행률 증가
-        onTap: todo.isHabit && !todo.isCompleted ? () => _incrementHabitProgress(todo) : null,
+        // 습관일 때 터치로 진행률 증가 기능 제거 (+ 버튼만 사용)
+        onTap: null,
       ),
     );
   }
@@ -964,14 +998,14 @@ class _TodoListPageState extends State<TodoListPage>
   /// 투두 Leading 위젯 빌드 (체크박스 또는 습관 버튼)
   Widget _buildTodoLeading(TodoItemModel todo) {
     if (todo.isHabit && !todo.isCompleted) {
-      // 습관용 + 버튼 (미래 날짜 체크)
+      // 습관용 + 버튼 (isCheckableToday에서 모든 조건 처리)
       final isCheckable = todo.isCheckableToday;
       
       return GestureDetector(
         onTap: isCheckable ? () => _incrementHabitProgress(todo) : () => _showFutureTodoWarning(todo),
         child: Container(
-          width: 48,
-          height: 48,
+          width: 36,
+          height: 36,
           decoration: BoxDecoration(
             color: isCheckable ? AppColors.purple600 : AppColors.grey400,
             shape: BoxShape.circle,
@@ -984,32 +1018,43 @@ class _TodoListPageState extends State<TodoListPage>
             ] : null,
           ),
           child: Icon(
-            isCheckable ? Icons.add : Icons.schedule,
+            isCheckable ? Icons.add : (todo.isBeforeStart ? Icons.pause_circle_outline : Icons.schedule),
             color: Colors.white,
-            size: 24,
+            size: 20,
           ),
         ),
       );
     } else {
-      // 일반 체크박스 (미래 날짜 체크)
+      // 원형 체크박스 (isCheckableToday에서 모든 조건 처리)
       final isCheckable = todo.isCheckableToday;
       
-      return Checkbox(
-        value: todo.isCompleted,
-        onChanged: isCheckable 
-            ? (todo.isCompleted ? null : (_) => _completeTodo(todo))
-            : (_) => _showFutureTodoWarning(todo),
-        activeColor: AppColors.purple600,
-        // 미래 날짜 할일은 비활성화 스타일
-        fillColor: MaterialStateProperty.resolveWith<Color>((states) {
-          if (!isCheckable && !todo.isCompleted) {
-            return AppColors.grey400;
-          }
-          if (states.contains(MaterialState.selected)) {
-            return AppColors.purple600;
-          }
-          return Colors.transparent;
-        }),
+      return GestureDetector(
+        onTap: isCheckable 
+            ? (todo.isCompleted ? null : () => _completeTodo(todo))
+            : () => _showFutureTodoWarning(todo),
+        child: Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: todo.isCompleted 
+                  ? AppColors.purple600 
+                  : (isCheckable ? AppColors.purple600 : AppColors.grey400),
+              width: 2,
+            ),
+            color: todo.isCompleted 
+                ? AppColors.purple600 
+                : Colors.transparent,
+          ),
+          child: todo.isCompleted 
+              ? const Icon(
+                  Icons.check,
+                  color: Colors.white,
+                  size: 20,
+                )
+              : null,
+        ),
       );
     }
   }
@@ -1018,7 +1063,6 @@ class _TodoListPageState extends State<TodoListPage>
   Widget _buildHabitProgress(TodoItemModel todo) {
     final progress = todo.habitProgress;
     final progressText = todo.habitProgressText;
-    final isFuture = todo.isFutureTodo;
     final isCheckable = todo.isCheckableToday;
     
     return Column(
@@ -1060,29 +1104,29 @@ class _TodoListPageState extends State<TodoListPage>
           ),
           minHeight: 6,
         ),
-        const SizedBox(height: 4),
-        Text(
-          isCheckable ? '터치해서 +1 추가하기' : '마감일에 처리 가능',
-          style: TextStyle(
-            fontSize: 11,
-            color: isCheckable ? AppColors.grey500 : AppColors.orange600,
-            fontStyle: FontStyle.italic,
+        // 체크 가능할 때만 간단한 안내 메시지 표시 (중복 제거)
+        if (isCheckable) ...[
+          const SizedBox(height: 4),
+          Text(
+            '+ 버튼으로 추가하기',
+            style: TextStyle(
+              fontSize: 11,
+              color: AppColors.grey500,
+              fontStyle: FontStyle.italic,
+            ),
           ),
-        ),
+        ],
       ],
     );
   }
 
   /// 미래 날짜 할일 경고 메시지 표시
   void _showFutureTodoWarning(TodoItemModel todo) {
-    final dueDate = todo.dueDate;
-    if (dueDate == null) return;
-    
-    final dueDateStr = '${dueDate.year}.${dueDate.month.toString().padLeft(2, '0')}.${dueDate.day.toString().padLeft(2, '0')}';
+    final message = _getDisabledReason(todo);
     
     SnackBarUtils.showInfo(
       context, 
-      '${dueDateStr}에 처리할 수 있습니다',
+      message.isEmpty ? '아직 처리할 수 없습니다' : message,
       duration: const Duration(seconds: 2),
     );
   }
@@ -1260,12 +1304,16 @@ class _TodoListPageState extends State<TodoListPage>
               todoId: updatedTodo.id,
               title: updatedTodo.title,
               description: updatedTodo.description,
+              type: updatedTodo.type,
               category: updatedTodo.category,
               priority: updatedTodo.priority,
               difficulty: updatedTodo.difficulty,
               startDate: updatedTodo.startDate,
               dueDate: updatedTodo.dueDate,
               estimatedTime: updatedTodo.estimatedTime,
+              repeatPattern: updatedTodo.repeatPattern,
+              tags: updatedTodo.tags,
+              targetCount: updatedTodo.targetCount,
               hasReminder: updatedTodo.hasReminder,
               reminderTime: updatedTodo.reminderTime,
               reminderMinutesBefore: updatedTodo.reminderMinutesBefore,
@@ -1302,6 +1350,8 @@ class _TodoListPageState extends State<TodoListPage>
         onFilterApplied: (filter) {
           setState(() {
             _currentFilter = filter;
+            // 필터가 변경되었으므로 캐시 무효화
+            _invalidateCache();
           });
         },
       ),
@@ -1384,6 +1434,32 @@ class _TodoListPageState extends State<TodoListPage>
     }
   }
 
+  Color _getPriorityColor(Priority priority) {
+    switch (priority) {
+      case Priority.low:
+        return AppColors.green600;
+      case Priority.medium:
+        return AppColors.orange600;
+      case Priority.high:
+        return AppColors.red600;
+    }
+  }
+
+  String _formatEstimatedTime(Duration duration) {
+    final hours = duration.inHours;
+    final minutes = duration.inMinutes.remainder(60);
+    
+    if (hours > 0 && minutes > 0) {
+      return '${hours}시간 ${minutes}분';
+    } else if (hours > 0) {
+      return '${hours}시간';
+    } else if (minutes > 0) {
+      return '${minutes}분';
+    } else {
+      return '< 1분';
+    }
+  }
+
   // ========================================
   // 스낵바 메서드 (레거시 - 호환성을 위해 유지하되 최적화된 유틸리티 사용)
   // ========================================
@@ -1445,6 +1521,90 @@ class _TodoListPageState extends State<TodoListPage>
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  String _getDisabledReason(TodoItemModel todo) {
+    if (!todo.isCheckableToday && !todo.isCompleted) {
+      if (todo.isBeforeStart && todo.startDate != null) {
+        final startDate = todo.startDate!;
+        final startDateStr = '${startDate.year}.${startDate.month.toString().padLeft(2, '0')}.${startDate.day.toString().padLeft(2, '0')}';
+        return '${startDateStr}부터 처리 가능';
+      } else if (todo.isRepeating && todo.repeatPattern != null) {
+        // 반복 패턴으로 인해 오늘 해당하지 않는 경우를 먼저 처리
+        switch (todo.repeatPattern!.repeatType) {
+          case RepeatType.weekly:
+            if (todo.repeatPattern!.weekdays != null) {
+              final weekdayNames = ['월', '화', '수', '목', '금', '토', '일'];
+              final selectedDays = todo.repeatPattern!.weekdays!
+                  .map((day) => weekdayNames[day - 1])
+                  .toList();
+              
+              // 오버플로우 방지: 최대 3개까지만 표시
+              if (selectedDays.length <= 3) {
+                return '${selectedDays.join(', ')}요일에만 처리 가능';
+              } else {
+                final displayDays = selectedDays.take(3).join(', ');
+                final remainingCount = selectedDays.length - 3;
+                return '$displayDays 외 ${remainingCount}개 요일에만 처리 가능';
+              }
+            }
+            break;
+          case RepeatType.monthly:
+            if (todo.repeatPattern!.monthDays != null) {
+              final days = todo.repeatPattern!.monthDays!
+                  .map((day) => day == 99 ? '말일' : '${day}일')
+                  .toList();
+              
+              // 오버플로우 방지: 최대 3개까지만 표시
+              if (days.length <= 3) {
+                return '매월 ${days.join(', ')}에만 처리 가능';
+              } else {
+                final displayDays = days.take(3).join(', ');
+                final remainingCount = days.length - 3;
+                return '매월 $displayDays 외 ${remainingCount}개 날짜에만 처리 가능';
+              }
+            }
+            break;
+          case RepeatType.custom:
+            if (todo.repeatPattern!.customInterval != null) {
+              return '${todo.repeatPattern!.customInterval}일마다 처리 가능';
+            }
+            break;
+          default:
+            return '지정된 날짜에만 처리 가능';
+        }
+        return '지정된 날짜에만 처리 가능';
+      } else if (todo.isFutureTodo && todo.dueDate != null) {
+        final dueDate = todo.dueDate!;
+        final dueDateStr = '${dueDate.year}.${dueDate.month.toString().padLeft(2, '0')}.${dueDate.day.toString().padLeft(2, '0')}';
+        return '${dueDateStr}에 처리 가능';
+      } else {
+        return '아직 처리할 수 없음';
+      }
+    }
+    return '';
+  }
+
+  Widget _buildCompactTag(String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: color.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w500,
+          color: color.withOpacity(0.8),
+        ),
       ),
     );
   }

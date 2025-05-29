@@ -13,22 +13,20 @@ class TreeWidget extends StatelessWidget {
       return '🥀'; // 시든 꽃
     }
     
-    // 완료된 경우 큰 나무
-    if (session.status == FocusSessionStatus.completed) {
-      return '🌳'; // 큰 나무
-    }
-    
-    // 진행 중인 경우 성장 단계에 따라
+    // 성장 단계에 따라 (완료 및 진행 중 모두 동일한 로직)
     switch (session.growthStage) {
       case 1:
-        return '🌱'; // 새싹 (0-25%)
+        return '🌱'; // 씨앗
       case 2:
-        return '🌿'; // 잎사귀 (25-50%)
+        return '🌿'; // 새싹
       case 3:
-        return '🌲'; // 작은 나무 (50-75%)
+        return '🌳'; // 작은 나무
       case 4:
+        return '🌲'; // 큰 나무
+      case 5:
+        return '🎋'; // 거대한 나무 (특별한 나무)
       default:
-        return '🌳'; // 큰 나무 (75-100%)
+        return '🌱'; // 기본값
     }
   }
 
@@ -38,12 +36,22 @@ class TreeWidget extends StatelessWidget {
     }
     
     if (session.status == FocusSessionStatus.completed) {
-      return '완성!';
+      if (session.isStopwatchMode) {
+        return '완성!'; // 스톱워치 모드
+      } else {
+        return '완성!'; // 타이머 모드 - 완료 시 특별한 나무 달성
+      }
     }
     
-    // 진행률 표시
-    final progressPercent = (session.progress * 100).round();
-    return '$progressPercent%';
+    // 진행 중일 때는 모드별로 다른 표시
+    if (session.isStopwatchMode) {
+      // 스톱워치 모드: 경과 시간 표시
+      return session.formattedElapsedTime;
+    } else {
+      // 타이머 모드: 진행률 표시
+      final progressPercent = (session.progress * 100).round();
+      return '$progressPercent%';
+    }
   }
 
   Color _getBackgroundColor() {
@@ -51,20 +59,20 @@ class TreeWidget extends StatelessWidget {
       return Colors.brown.shade50;
     }
     
-    if (session.status == FocusSessionStatus.completed) {
-      return Colors.green.shade50;
-    }
-    
-    // 진행률에 따른 색상 변화
-    final progress = session.progress.clamp(0.0, 1.0); // 안전한 범위로 제한
-    if (progress < 0.25) {
-      return Colors.yellow.shade50; // 씨앗 단계
-    } else if (progress < 0.50) {
-      return Colors.lightGreen.shade50; // 새싹 단계
-    } else if (progress < 0.75) {
-      return Colors.green.shade100; // 작은 나무 단계
-    } else {
-      return Colors.green.shade50; // 큰 나무 단계
+    // 성장 단계에 따른 색상 (완료 및 진행 중 모두 동일)
+    switch (session.growthStage) {
+      case 1:
+        return Colors.yellow.shade50; // 씨앗 단계
+      case 2:
+        return Colors.lightGreen.shade50; // 새싹 단계
+      case 3:
+        return Colors.green.shade100; // 작은 나무 단계
+      case 4:
+        return Colors.green.shade50; // 큰 나무 단계
+      case 5:
+        return Colors.purple.shade50; // 거대한 나무 단계 (특별한 색상)
+      default:
+        return Colors.yellow.shade50; // 기본값
     }
   }
 

@@ -148,11 +148,30 @@ class _AnimalClickerPageState extends State<AnimalClickerPage>
         _clickAnimationController.reverse();
       });
       
-      final updatedPet = await AnimalCollectorService.clickPet(_currentUser!.id);
-      if (updatedPet != null) {
+      final result = await AnimalCollectorService.clickPet(_currentUser!.id, currentUser: _currentUser);
+      if (result['success']) {
         setState(() {
-          _currentPet = updatedPet;
+          _currentPet = result['pet'];
+          // 유저 정보 업데이트 (레벨업 포인트 보상 적용)
+          if (result['user'] != null) {
+            _currentUser = result['user'];
+          }
         });
+        
+        // 특별 메시지 표시
+        if (result['specialMessage'] != null) {
+          _showSuccessSnackBar(result['specialMessage']);
+        }
+        
+        // 레벨업 메시지들 순차 표시
+        if (result['leveledUp'] && result['levelUpMessages'] != null) {
+          final messages = result['levelUpMessages'] as List<String>;
+          for (int i = 0; i < messages.length; i++) {
+            Future.delayed(Duration(milliseconds: i * 1000), () {
+              _showSuccessSnackBar(messages[i]);
+            });
+          }
+        }
       }
     } catch (e) {
       if (kDebugMode) {
@@ -604,6 +623,11 @@ class _AnimalClickerPageState extends State<AnimalClickerPage>
           
           const SizedBox(height: 20),
           
+          // 테스트용 레벨업 버튼 (개발 모드에서만 표시)
+          if (kDebugMode) _buildTestButtons(),
+          
+          const SizedBox(height: 20),
+          
           // 완료/포기 버튼들
           _buildControlButtons(),
         ],
@@ -799,17 +823,32 @@ class _AnimalClickerPageState extends State<AnimalClickerPage>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                '📈 성장도',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '⭐ 레벨 ${_currentPet!.level}',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Text(
+                    _currentPet!.currentTitle,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.purple.shade600,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
               ),
               Text(
-                '${_currentPet!.growth.toInt()}%',
+                _currentPet!.level >= 99 
+                    ? 'MAX' 
+                    : '${_currentPet!.experience.toInt()}/${_currentPet!.requiredExp.toInt()}',
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: 14,
                   fontWeight: FontWeight.bold,
                   color: Colors.green.shade600,
                 ),
@@ -818,18 +857,32 @@ class _AnimalClickerPageState extends State<AnimalClickerPage>
           ),
           const SizedBox(height: 12),
           LinearProgressIndicator(
-            value: _currentPet!.growth / 100,
+            value: _currentPet!.expProgress,
             backgroundColor: Colors.grey.shade200,
-            valueColor: AlwaysStoppedAnimation<Color>(Colors.green.shade400),
+            valueColor: AlwaysStoppedAnimation<Color>(
+              _currentPet!.level >= 99 ? Colors.amber.shade400 : Colors.green.shade400
+            ),
             minHeight: 12,
           ),
           const SizedBox(height: 8),
-          Text(
-            '클릭 파워: ${_currentPet!.clickPower.toStringAsFixed(1)}%',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey.shade600,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '클릭 파워: +${_currentPet!.clickPower.toStringAsFixed(1)}',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey.shade600,
+                ),
+              ),
+              Text(
+                '총 클릭: ${_currentPet!.totalClicks}회',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey.shade600,
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -928,6 +981,109 @@ class _AnimalClickerPageState extends State<AnimalClickerPage>
     );
   }
 
+  // 테스트용 레벨업 버튼 (개발 모드에서만 표시)
+  Widget _buildTestButtons() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.orange.shade50,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.orange.shade300, width: 2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.orange.shade100,
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.developer_mode,
+                color: Colors.orange.shade600,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '🚀 개발자 테스트 메뉴',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.orange.shade700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: _currentPet!.level < 99 ? () => _levelUpPet() : null,
+                  icon: const Icon(Icons.arrow_upward, size: 18),
+                  label: Text(
+                    _currentPet!.level >= 99 
+                        ? '최대 레벨 (Lv.99)' 
+                        : '레벨업! (${_currentPet!.level} → ${_currentPet!.level + 1})',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _currentPet!.level >= 99 
+                        ? Colors.grey.shade400 
+                        : Colors.orange.shade400,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () => _addTestPoints(),
+                  icon: const Icon(Icons.monetization_on, size: 18),
+                  label: const Text(
+                    '포인트 충전 (+10000P)',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.amber.shade500,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '현재: Lv.${_currentPet!.level} (경험치 ${_currentPet!.experience.toInt()}/${_currentPet!.level >= 99 ? "MAX" : _currentPet!.requiredExp.toInt()}) | 포인트: ${_currentUser!.rewardPoints}P',
+            style: TextStyle(
+              fontSize: 11,
+              color: Colors.orange.shade600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // 완료/포기 버튼들
   Widget _buildControlButtons() {
     return Row(
@@ -948,7 +1104,9 @@ class _AnimalClickerPageState extends State<AnimalClickerPage>
               padding: const EdgeInsets.symmetric(vertical: 16),
             ),
             child: Text(
-              _currentPet!.canComplete ? '📖 도감 등록' : '성장도 ${_currentPet!.growth.toInt()}%',
+              _currentPet!.canComplete 
+                  ? '📖 도감 등록 (Lv.${_currentPet!.level})' 
+                  : 'Lv.2 달성 필요',
               style: const TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
@@ -1282,5 +1440,54 @@ class _AnimalClickerPageState extends State<AnimalClickerPage>
   // 에러 스낵바
   void _showErrorSnackBar(String message) {
     SnackBarUtils.showError(context, message);
+  }
+
+  // 레벨업 기능 구현
+  Future<void> _levelUpPet() async {
+    if (_currentPet == null) return;
+    
+    try {
+      final result = await AnimalCollectorService.levelUpPet(
+        _currentUser!.id,
+        currentUser: _currentUser!,
+      );
+      
+      if (result['success']) {
+        setState(() {
+          _currentUser = result['user'];
+          _currentPet = result['pet'];
+        });
+        
+        _showSuccessSnackBar('레벨업 완료! 새로운 레벨: ${_currentPet!.level}');
+      } else {
+        _showErrorSnackBar(result['error']);
+      }
+    } catch (e) {
+      _showErrorSnackBar('레벨업 중 오류가 발생했습니다: $e');
+    }
+  }
+
+  // 테스트용 포인트 충전 기능 구현
+  Future<void> _addTestPoints() async {
+    if (_currentUser == null) return;
+    
+    try {
+      final result = await AnimalCollectorService.addTestPoints(
+        _currentUser!.id,
+        currentUser: _currentUser!,
+      );
+      
+      if (result['success']) {
+        setState(() {
+          _currentUser = result['user'];
+        });
+        
+        _showSuccessSnackBar('포인트 충전 완료! 현재 포인트: ${_currentUser!.rewardPoints}P');
+      } else {
+        _showErrorSnackBar(result['error']);
+      }
+    } catch (e) {
+      _showErrorSnackBar('포인트 충전 중 오류가 발생했습니다: $e');
+    }
   }
 } 

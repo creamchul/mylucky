@@ -12,25 +12,31 @@ class CurrentPet {
   final String id;
   final String speciesId;
   final String nickname;
-  final double growth;        // 0-100 성장도 (클릭으로만 증가)
+  final double growth;        // 호환성을 위해 유지 (experience와 동일)
+  final int level;            // 현재 레벨 (1부터 시작)
+  final double experience;    // 현재 경험치
   final AnimalMood mood;
   final DateTime createdAt;
   final DateTime lastInteraction;
   final int totalClicks;      // 총 클릭 수
   final int comboCount;       // 현재 콤보 수
   final Map<String, dynamic> stats; // 추가 스탯 (업그레이드 등)
+  final List<String> titles;  // 획득한 타이틀들
 
   const CurrentPet({
     required this.id,
     required this.speciesId,
     required this.nickname,
     required this.growth,
+    this.level = 1,
+    this.experience = 0.0,
     required this.mood,
     required this.createdAt,
     required this.lastInteraction,
     this.totalClicks = 0,
     this.comboCount = 0,
     this.stats = const {},
+    this.titles = const [],
   });
 
   // 팩토리 생성자 - 새로운 펫 생성
@@ -44,22 +50,59 @@ class CurrentPet {
       speciesId: speciesId,
       nickname: nickname,
       growth: 0.0,
+      level: 1,
+      experience: 0.0,
       mood: AnimalMood.happy,
       createdAt: now,
       lastInteraction: now,
       totalClicks: 0,
       comboCount: 0,
       stats: {
-        'clickPower': 1.0,      // 클릭당 성장량만 유지
+        'clickPower': 1.0,      // 클릭당 경험치 증가량
       },
+      titles: ['🐣 새싹 키우미'], // 시작 타이틀
     );
   }
 
-  // 도감 등록 가능 여부 확인 (성장도 100%)
-  bool get canComplete => growth >= 100;
+  // 다음 레벨 요구 경험치 계산
+  double get requiredExp {
+    if (level >= 99) return 99 * 100.0 + (99 - 1) * 50.0; // 레벨 99 요구 경험치 고정
+    return (level + 1) * 100.0 + level * 50.0; // 다음 레벨 요구 경험치
+  }
+
+  // 경험치 진행률 (0.0 ~ 1.0)
+  double get expProgress {
+    if (level >= 99) return 1.0; // 최대 레벨에서는 100%
+    final required = requiredExp;
+    if (required <= 0) return 1.0; // 안전장치
+    return (experience / required).clamp(0.0, 1.0);
+  }
+
+  // 도감 등록 가능 여부 확인 (레벨 2 이상)
+  bool get canComplete => level >= 2;
 
   // 클릭 파워 (업그레이드 가능)
   double get clickPower => (stats['clickPower'] as double?) ?? 1.0;
+
+  // 현재 타이틀 (가장 최근 획득)
+  String get currentTitle => titles.isNotEmpty ? titles.last : '🐣 새싹 키우미';
+
+  // 레벨별 기본 타이틀 가져오기
+  String getLevelTitle(int targetLevel) {
+    if (targetLevel >= 90) return '♾️ 영원한 수호자';
+    if (targetLevel >= 80) return '🌟 클릭의 신';
+    if (targetLevel >= 70) return '🚀 우주 클리커';
+    if (targetLevel >= 60) return '🌈 무지개 터치';
+    if (targetLevel >= 50) return '⚡ 번개손';
+    if (targetLevel >= 40) return '🔥 클릭 황제';
+    if (targetLevel >= 30) return '💎 동물원장';
+    if (targetLevel >= 20) return '🎯 클릭 전설';
+    if (targetLevel >= 15) return '👑 펫 마에스트로';
+    if (targetLevel >= 10) return '🏆 케어마스터';
+    if (targetLevel >= 5) return '🌟 돌봄이';
+    if (targetLevel >= 2) return '🐾 동물 친구';
+    return '🐣 새싹 키우미';
+  }
 
   // 기분 이모지
   String get moodEmoji {
@@ -91,24 +134,30 @@ class CurrentPet {
     String? speciesId,
     String? nickname,
     double? growth,
+    int? level,
+    double? experience,
     AnimalMood? mood,
     DateTime? createdAt,
     DateTime? lastInteraction,
     int? totalClicks,
     int? comboCount,
     Map<String, dynamic>? stats,
+    List<String>? titles,
   }) {
     return CurrentPet(
       id: id ?? this.id,
       speciesId: speciesId ?? this.speciesId,
       nickname: nickname ?? this.nickname,
       growth: growth ?? this.growth,
+      level: level ?? this.level,
+      experience: experience ?? this.experience,
       mood: mood ?? this.mood,
       createdAt: createdAt ?? this.createdAt,
       lastInteraction: lastInteraction ?? this.lastInteraction,
       totalClicks: totalClicks ?? this.totalClicks,
       comboCount: comboCount ?? this.comboCount,
       stats: stats ?? this.stats,
+      titles: titles ?? this.titles,
     );
   }
 
@@ -119,12 +168,15 @@ class CurrentPet {
       'speciesId': speciesId,
       'nickname': nickname,
       'growth': growth,
+      'level': level,
+      'experience': experience,
       'mood': mood.toString(),
       'createdAt': createdAt.millisecondsSinceEpoch,
       'lastInteraction': lastInteraction.millisecondsSinceEpoch,
       'totalClicks': totalClicks,
       'comboCount': comboCount,
       'stats': stats,
+      'titles': titles,
     };
   }
 
@@ -135,6 +187,8 @@ class CurrentPet {
       speciesId: json['speciesId'] as String,
       nickname: json['nickname'] as String,
       growth: (json['growth'] as num).toDouble(),
+      level: json['level'] as int? ?? 1,
+      experience: (json['experience'] as num?)?.toDouble() ?? 0.0,
       mood: AnimalMood.values.firstWhere(
         (e) => e.toString() == json['mood'],
         orElse: () => AnimalMood.happy,
@@ -144,12 +198,13 @@ class CurrentPet {
       totalClicks: json['totalClicks'] as int? ?? 0,
       comboCount: json['comboCount'] as int? ?? 0,
       stats: Map<String, dynamic>.from(json['stats'] as Map? ?? {}),
+      titles: List<String>.from(json['titles'] as List? ?? []),
     );
   }
 
   @override
   String toString() {
-    return 'CurrentPet(id: $id, nickname: $nickname, growth: $growth%, clicks: $totalClicks)';
+    return 'CurrentPet(id: $id, nickname: $nickname, level: $level, exp: ${experience.toInt()}/${requiredExp.toInt()}, clicks: $totalClicks)';
   }
 
   @override
