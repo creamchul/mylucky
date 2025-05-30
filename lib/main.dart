@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:firebase_core/firebase_core.dart';
 // Constants imports
 import 'constants/app_colors.dart';
@@ -11,6 +10,7 @@ import 'pages/home_page.dart';
 import 'firebase_options.dart';
 // Services
 import 'services/firebase_service.dart';
+import 'services/performance_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -42,6 +42,9 @@ void main() async {
     }
   }
   
+  // 성능 최적화 서비스 초기화
+  await PerformanceService.initialize();
+  
   runApp(const MyLuckyApp());
 }
 
@@ -53,16 +56,15 @@ class MyLuckyApp extends StatelessWidget {
     return MaterialApp(
       title: AppStrings.appName,
       
-      // 국제화 설정
+      // 웹 호환성을 위해 기본 영어 localization 사용
       localizationsDelegates: const [
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
+        DefaultMaterialLocalizations.delegate,
+        DefaultWidgetsLocalizations.delegate,
       ],
       supportedLocales: const [
-        Locale('ko', 'KR'), // 한국어
+        Locale('en', 'US'),
       ],
-      locale: const Locale('ko', 'KR'), // 기본 로케일
+      locale: const Locale('en', 'US'),
       
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(

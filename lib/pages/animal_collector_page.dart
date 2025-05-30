@@ -6,6 +6,7 @@ import '../services/animal_collector_service.dart';
 import '../data/animal_data.dart';
 import 'animal_collection_page.dart';
 import '../utils/snackbar_utils.dart';
+import '../constants/app_colors.dart';
 
 class AnimalCollectorPage extends StatefulWidget {
   final UserModel currentUser;
@@ -289,7 +290,7 @@ class _AnimalCollectorPageState extends State<AnimalCollectorPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.green.shade50,
+      backgroundColor: AppColors.petCoralLight,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -298,7 +299,7 @@ class _AnimalCollectorPageState extends State<AnimalCollectorPage>
           children: [
             Icon(
               Icons.pets,
-              color: Colors.green.shade600,
+              color: AppColors.petCoral,
               size: 20,
             ),
             const SizedBox(width: 6),
@@ -308,7 +309,7 @@ class _AnimalCollectorPageState extends State<AnimalCollectorPage>
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
-                  color: Colors.green.shade600,
+                  color: AppColors.petCoral,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -329,7 +330,7 @@ class _AnimalCollectorPageState extends State<AnimalCollectorPage>
             },
             icon: Icon(
               Icons.collections_bookmark,
-              color: Colors.green.shade600,
+              color: AppColors.petCoral,
               size: 20,
             ),
             tooltip: '도감',
@@ -340,9 +341,9 @@ class _AnimalCollectorPageState extends State<AnimalCollectorPage>
             margin: const EdgeInsets.only(right: 16),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: Colors.amber.shade100,
+              color: AppColors.petCoralLight,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.amber.shade300),
+              border: Border.all(color: AppColors.petCoral.withOpacity(0.3)),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -350,7 +351,7 @@ class _AnimalCollectorPageState extends State<AnimalCollectorPage>
                 Icon(
                   Icons.monetization_on,
                   size: 16,
-                  color: Colors.amber.shade700,
+                  color: AppColors.petCoral,
                 ),
                 const SizedBox(width: 4),
                 Text(
@@ -358,7 +359,7 @@ class _AnimalCollectorPageState extends State<AnimalCollectorPage>
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
-                    color: Colors.amber.shade700,
+                    color: AppColors.petCoral,
                   ),
                 ),
               ],
@@ -367,7 +368,11 @@ class _AnimalCollectorPageState extends State<AnimalCollectorPage>
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(AppColors.petCoral),
+              ),
+            )
           : _currentPet == null
               ? _buildGachaScreen()
               : _buildPetCareScreen(),
@@ -388,7 +393,7 @@ class _AnimalCollectorPageState extends State<AnimalCollectorPage>
             style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.bold,
-              color: Colors.green.shade700,
+              color: AppColors.petCoral,
             ),
           ),
           const SizedBox(height: 8),
@@ -396,7 +401,7 @@ class _AnimalCollectorPageState extends State<AnimalCollectorPage>
             '새로운 동물 친구를 만나보세요!',
             style: TextStyle(
               fontSize: 16,
-              color: Colors.green.shade600,
+              color: AppColors.petCoral,
             ),
           ),
           
@@ -410,16 +415,16 @@ class _AnimalCollectorPageState extends State<AnimalCollectorPage>
               shape: BoxShape.circle,
               gradient: LinearGradient(
                 colors: [
-                  Colors.purple.shade200,
-                  Colors.blue.shade200,
-                  Colors.green.shade200,
+                  AppColors.petCoralLight,
+                  AppColors.petCoral.withOpacity(0.7),
+                  AppColors.petCoralDark.withOpacity(0.8),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.purple.shade100,
+                  color: AppColors.petCoral.withOpacity(0.3),
                   blurRadius: 20,
                   spreadRadius: 5,
                 ),
@@ -457,14 +462,14 @@ class _AnimalCollectorPageState extends State<AnimalCollectorPage>
             },
             icon: Icon(
               Icons.collections_bookmark,
-              color: Colors.indigo.shade600,
+              color: AppColors.petCoral,
               size: 18,
             ),
             label: Text(
               '📖 도감 보기',
               style: TextStyle(
                 fontSize: 14,
-                color: Colors.indigo.shade600,
+                color: AppColors.petCoral,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -503,9 +508,9 @@ class _AnimalCollectorPageState extends State<AnimalCollectorPage>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _buildProbabilityItem('⭐', '일반', '70%', Colors.green),
-              _buildProbabilityItem('⭐⭐', '희귀', '25%', Colors.blue),
-              _buildProbabilityItem('⭐⭐⭐', '전설', '5%', Colors.purple),
+              _buildProbabilityItem('⭐', '일반', '70%', AppColors.petCoral),
+              _buildProbabilityItem('⭐⭐', '희귀', '25%', AppColors.petCoralDark),
+              _buildProbabilityItem('⭐⭐⭐', '전설', '5%', AppColors.petCoral.withOpacity(0.8)),
             ],
           ),
         ],
@@ -553,7 +558,7 @@ class _AnimalCollectorPageState extends State<AnimalCollectorPage>
             child: ElevatedButton(
               onPressed: () => _performGacha(isFree: true),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green.shade400,
+                backgroundColor: AppColors.petCoral,
                 foregroundColor: Colors.white,
                 elevation: 4,
                 shape: RoundedRectangleBorder(
@@ -586,7 +591,7 @@ class _AnimalCollectorPageState extends State<AnimalCollectorPage>
                 ? () => _performGacha(isFree: false)
                 : null,
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.amber.shade400,
+              backgroundColor: AppColors.petCoralDark,
               foregroundColor: Colors.white,
               elevation: 4,
               shape: RoundedRectangleBorder(

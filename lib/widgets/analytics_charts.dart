@@ -646,4 +646,603 @@ class AnalyticsCharts {
       ),
     );
   }
+  
+  /// 범용 막대 차트 (시간대별, 일별, 월별 등에 사용)
+  static Widget buildBarChart(
+    Map<int, double> data, 
+    Color color, 
+    String Function(int) getLabelText,
+    String tooltipSuffix,
+    {double? maxY, double barWidth = 12}
+  ) {
+    final barGroups = data.entries.map((entry) {
+      return BarChartGroupData(
+        x: entry.key,
+        barRods: [
+          BarChartRodData(
+            toY: entry.value,
+            color: color,
+            width: barWidth,
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(6),
+              topRight: Radius.circular(6),
+            ),
+          ),
+        ],
+      );
+    }).toList();
+    
+    final calculatedMaxY = maxY ?? (data.values.isNotEmpty ? data.values.reduce((a, b) => a > b ? a : b) + 30 : 100);
+    
+    return Container(
+      height: 200,
+      padding: const EdgeInsets.all(16),
+      child: BarChart(
+        BarChartData(
+          alignment: BarChartAlignment.spaceAround,
+          maxY: calculatedMaxY,
+          barTouchData: BarTouchData(
+            touchTooltipData: BarTouchTooltipData(
+              getTooltipColor: (group) => Colors.black87,
+              getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                final labelText = getLabelText(group.x);
+                final displayLabel = labelText.isEmpty ? '${group.x}' : labelText;
+                return BarTooltipItem(
+                  '$displayLabel : ${rod.toY.toInt()}$tooltipSuffix',
+                  const TextStyle(color: Colors.white, fontSize: 12),
+                );
+              },
+            ),
+          ),
+          titlesData: FlTitlesData(
+            show: true,
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 30,
+                getTitlesWidget: (value, meta) {
+                  final index = value.toInt();
+                  final labelText = getLabelText(index);
+                  
+                  bool shouldShow = false;
+                  if (tooltipSuffix == '분') {
+                    if (labelText.contains('시')) {
+                      shouldShow = index % 4 == 0 || index == 23;
+                    } else if (labelText.contains('일')) {
+                      shouldShow = index % 5 == 0 || index == 1;
+                    } else if (labelText.contains('월')) {
+                      shouldShow = index >= 1 && index <= 12;
+                    }
+                  }
+                  
+                  if (shouldShow) {
+                    return Text(
+                      labelText,
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: Colors.grey.shade600,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    );
+                  }
+                  return Container();
+                },
+              ),
+            ),
+            leftTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 40,
+                getTitlesWidget: (value, meta) {
+                  return Text(
+                    '${value.toInt()}분',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: Colors.grey.shade600,
+                    ),
+                  );
+                },
+              ),
+            ),
+            topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          ),
+          borderData: FlBorderData(
+            show: true,
+            border: Border.all(color: Colors.grey.shade300),
+          ),
+          gridData: FlGridData(
+            show: true,
+            drawHorizontalLine: true,
+            drawVerticalLine: false,
+            horizontalInterval: 30,
+            getDrawingHorizontalLine: (value) => FlLine(
+              color: Colors.grey.shade300,
+              strokeWidth: 1,
+            ),
+          ),
+          barGroups: barGroups,
+        ),
+      ),
+    );
+  }
+
+  /// 가로 막대 비교 차트 (기간 비교용)
+  static Widget buildHorizontalComparisonChart(
+    Map<int, double> currentData,
+    Map<int, double> previousData,
+    Color currentColor,
+    Color previousColor,
+    String periodType,
+  ) {
+    final List<String> categories = [];
+    final List<Map<String, dynamic>> chartData = [];
+    
+    // 카테고리 라벨 생성
+    switch (periodType) {
+      case 'day':
+        // 주요 시간대만 표시 (6시간 간격)
+        for (int hour = 0; hour <= 18; hour += 6) {
+          categories.add('${hour}시');
+          chartData.add({
+            'category': '${hour}시',
+            'current': currentData[hour] ?? 0.0,
+            'previous': previousData[hour] ?? 0.0,
+          });
+        }
+        break;
+      case 'week':
+        final weekdays = ['월', '화', '수', '목', '금', '토', '일'];
+        for (int i = 1; i <= 7; i++) {
+          categories.add(weekdays[i-1]);
+          chartData.add({
+            'category': weekdays[i-1],
+            'current': currentData[i] ?? 0.0,
+            'previous': previousData[i] ?? 0.0,
+          });
+        }
+        break;
+      case 'month':
+        // 주요 날짜만 표시 (일주일 간격)
+        for (int day = 1; day <= 29; day += 7) {
+          categories.add('${day}일');
+          chartData.add({
+            'category': '${day}일',
+            'current': currentData[day] ?? 0.0,
+            'previous': previousData[day] ?? 0.0,
+          });
+        }
+        break;
+      case 'year':
+        final months = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
+        for (int i = 1; i <= 12; i++) {
+          categories.add(months[i-1]);
+          chartData.add({
+            'category': months[i-1],
+            'current': currentData[i] ?? 0.0,
+            'previous': previousData[i] ?? 0.0,
+          });
+        }
+        break;
+    }
+    
+    final maxValue = chartData.fold(0.0, (max, data) {
+      final currentMax = data['current'] as double;
+      final previousMax = data['previous'] as double;
+      return [max, currentMax, previousMax].reduce((a, b) => a > b ? a : b);
+    });
+    
+    return Container(
+      height: chartData.length * 60.0 + 40, // 각 항목당 60px + 여백
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: chartData.asMap().entries.map((entry) {
+          final index = entry.key;
+          final data = entry.value;
+          final category = data['category'] as String;
+          final current = data['current'] as double;
+          final previous = data['previous'] as double;
+          
+          return Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                children: [
+                  // 카테고리 라벨
+                  SizedBox(
+                    width: 40,
+                    child: Text(
+                      category,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.grey.shade700,
+                      ),
+                      textAlign: TextAlign.right,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  
+                  // 차트 영역
+                  Expanded(
+                    child: Column(
+                      children: [
+                        // 현재 기간 막대
+                        Expanded(
+                          child: Row(
+                            children: [
+                              SizedBox(
+                                width: 30,
+                                child: Text(
+                                  '현재',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: currentColor,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                child: Container(
+                                  height: 16,
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey.shade200,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: FractionallySizedBox(
+                                    alignment: Alignment.centerLeft,
+                                    widthFactor: maxValue > 0 ? (current / maxValue) : 0,
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        color: currentColor,
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              SizedBox(
+                                width: 40,
+                                child: Text(
+                                  '${current.toInt()}분',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: currentColor,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        
+                        const SizedBox(height: 2),
+                        
+                        // 이전 기간 막대
+                        Expanded(
+                          child: Row(
+                            children: [
+                              SizedBox(
+                                width: 30,
+                                child: Text(
+                                  '이전',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: previousColor,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                child: Container(
+                                  height: 16,
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey.shade200,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: FractionallySizedBox(
+                                    alignment: Alignment.centerLeft,
+                                    widthFactor: maxValue > 0 ? (previous / maxValue) : 0,
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        color: previousColor,
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              SizedBox(
+                                width: 40,
+                                child: Text(
+                                  '${previous.toInt()}분',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: previousColor,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  /// 간단한 3개 막대 비교 차트
+  static Widget buildSimpleComparisonChart(
+    double currentTotal,
+    double previousTotal,
+    double beforePreviousTotal,
+    String currentLabel,
+    String previousLabel,
+    String beforePreviousLabel,
+    Color currentColor,
+    Color previousColor,
+    Color beforePreviousColor,
+  ) {
+    final maxValue = [currentTotal, previousTotal, beforePreviousTotal].reduce((a, b) => a > b ? a : b);
+    
+    return Container(
+      height: 200,
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          // 현재 기간
+          Expanded(
+            child: _buildSimpleBarRow(
+              currentLabel,
+              currentTotal,
+              maxValue,
+              currentColor,
+            ),
+          ),
+          const SizedBox(height: 12),
+          
+          // 이전 기간
+          Expanded(
+            child: _buildSimpleBarRow(
+              previousLabel,
+              previousTotal,
+              maxValue,
+              previousColor,
+            ),
+          ),
+          const SizedBox(height: 12),
+          
+          // 전전 기간
+          Expanded(
+            child: _buildSimpleBarRow(
+              beforePreviousLabel,
+              beforePreviousTotal,
+              maxValue,
+              beforePreviousColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static Widget _buildSimpleBarRow(
+    String label,
+    double value,
+    double maxValue,
+    Color color,
+  ) {
+    return Row(
+      children: [
+        // 라벨
+        SizedBox(
+          width: 60,
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
+            textAlign: TextAlign.right,
+          ),
+        ),
+        const SizedBox(width: 16),
+        
+        // 막대와 수치
+        Expanded(
+          child: Row(
+            children: [
+              Expanded(
+                flex: 3,
+                child: Container(
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: FractionallySizedBox(
+                    alignment: Alignment.centerLeft,
+                    widthFactor: maxValue > 0 ? (value / maxValue) : 0,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            color,
+                            color.withValues(alpha: 0.8),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(14),
+                        boxShadow: [
+                          BoxShadow(
+                            color: color.withValues(alpha: 0.3),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              SizedBox(
+                width: 60,
+                child: Text(
+                  '${value.toInt()}분',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// 카테고리 분석 원형 차트
+  static Widget buildCategoryPieChart(
+    Map<String, Map<String, dynamic>> categoryData,
+    double totalMinutes,
+  ) {
+    if (categoryData.isEmpty || totalMinutes == 0) {
+      return Container(
+        height: 200,
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.pie_chart_outline,
+                size: 48,
+                color: Colors.grey.shade400,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                '카테고리 데이터가 없습니다',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey.shade600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final sections = categoryData.entries.map((entry) {
+      final categoryName = entry.key;
+      final data = entry.value;
+      final minutes = data['minutes'] as double;
+      final color = data['color'] as Color;
+      final percentage = (minutes / totalMinutes * 100);
+      
+      return PieChartSectionData(
+        color: color,
+        value: minutes,
+        title: '${percentage.toInt()}%',
+        radius: 60,
+        titleStyle: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+          color: Colors.white,
+        ),
+        badgeWidget: null,
+      );
+    }).toList();
+
+    return Container(
+      height: 250,
+      child: Row(
+        children: [
+          // 원형 차트
+          Expanded(
+            flex: 3,
+            child: PieChart(
+              PieChartData(
+                sections: sections,
+                centerSpaceRadius: 30,
+                sectionsSpace: 2,
+                pieTouchData: PieTouchData(
+                  touchCallback: (FlTouchEvent event, pieTouchResponse) {
+                    // 터치 이벤트 처리 (선택사항)
+                  },
+                ),
+              ),
+            ),
+          ),
+          
+          // 범례
+          Expanded(
+            flex: 2,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: categoryData.entries.map((entry) {
+                final categoryName = entry.key;
+                final data = entry.value;
+                final minutes = data['minutes'] as double;
+                final color = data['color'] as Color;
+                final percentage = (minutes / totalMinutes * 100);
+                
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 12,
+                        height: 12,
+                        decoration: BoxDecoration(
+                          color: color,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              categoryName,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.grey.shade800,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            Text(
+                              '${minutes.toInt()}분 (${percentage.toInt()}%)',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Colors.grey.shade600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 } 

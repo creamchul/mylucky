@@ -107,72 +107,17 @@ class TreeWidget extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
             children: [
-              // 나무 이모지
-              Flexible(
-                flex: 3,
-                child: FittedBox(
-                  fit: BoxFit.contain,
-                  child: Text(
-                    treeEmoji,
-                    style: TextStyle(
-                      fontSize: safeSize * 0.35, // 이모지 크기 조정
-                      height: 1.0,
-                    ),
+              // 나무 이모지만 표시
+              FittedBox(
+                fit: BoxFit.contain,
+                child: Text(
+                  treeEmoji,
+                  style: TextStyle(
+                    fontSize: safeSize * 0.4, // 이모지 크기를 약간 크게 조정
+                    height: 1.0,
                   ),
                 ),
               ),
-              
-              SizedBox(height: safeSize * 0.02),
-              
-              // 상태 텍스트
-              Flexible(
-                flex: 1,
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    statusText,
-                    style: TextStyle(
-                      fontSize: safeSize * 0.08,
-                      fontWeight: FontWeight.w600,
-                      color: session.status == FocusSessionStatus.abandoned 
-                          ? Colors.brown.shade600
-                          : Colors.green.shade700,
-                    ),
-                    textAlign: TextAlign.center,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ),
-              
-              // 진행 중일 때만 진행률 바 표시
-              if (session.status == FocusSessionStatus.running) ...[
-                SizedBox(height: safeSize * 0.02),
-                Flexible(
-                  flex: 1,
-                  child: Container(
-                    width: safeSize * 0.5,
-                    height: safeSize * 0.025,
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade300,
-                      borderRadius: BorderRadius.circular(safeSize * 0.0125),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(safeSize * 0.0125),
-                      child: FractionallySizedBox(
-                        alignment: Alignment.centerLeft,
-                        widthFactor: (session.progress * 1.0).clamp(0.0, 1.0),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.green,
-                            borderRadius: BorderRadius.circular(safeSize * 0.0125),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
             ],
           ),
         ),

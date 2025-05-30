@@ -28,10 +28,17 @@ class CategoryService {
         return category;
       }).toList();
 
-      // 클라이언트 사이드에서 정렬 (기본 카테고리 우선, 그 다음 생성일순)
+      // 클라이언트 사이드에서 정렬 (order 필드 우선, 그 다음 기본 카테고리, 그 다음 생성일순)
       categories.sort((a, b) {
+        // order 필드로 먼저 정렬
+        final orderComparison = a.order.compareTo(b.order);
+        if (orderComparison != 0) return orderComparison;
+        
+        // order가 같으면 기본 카테고리 우선
         if (a.isDefault && !b.isDefault) return -1;
         if (!a.isDefault && b.isDefault) return 1;
+        
+        // 그 다음 생성일순
         return a.createdAt.compareTo(b.createdAt);
       });
 
@@ -59,8 +66,15 @@ class CategoryService {
         
         // 다시 정렬
         categories.sort((a, b) {
+          // order 필드로 먼저 정렬
+          final orderComparison = a.order.compareTo(b.order);
+          if (orderComparison != 0) return orderComparison;
+          
+          // order가 같으면 기본 카테고리 우선
           if (a.isDefault && !b.isDefault) return -1;
           if (!a.isDefault && b.isDefault) return 1;
+          
+          // 그 다음 생성일순
           return a.createdAt.compareTo(b.createdAt);
         });
         
@@ -114,7 +128,12 @@ class CategoryService {
   /// 새 카테고리 생성
   static Future<bool> createCategory(String userId, FocusCategoryModel category) async {
     try {
-      final categoryData = category.toMap();
+      // 현재 사용자의 카테고리 개수를 확인하여 order 값 결정
+      final existingCategories = await getUserCategories(userId);
+      final newOrder = existingCategories.length;
+      
+      // order 값을 설정한 카테고리 데이터 생성
+      final categoryData = category.copyWith(order: newOrder).toMap();
       categoryData['userId'] = userId;
       
       final docRef = await FirebaseFirestore.instance
@@ -122,7 +141,7 @@ class CategoryService {
           .add(categoryData);
 
       // 로컬 저장소에도 저장
-      await _saveToLocal(category.copyWith(id: docRef.id));
+      await _saveToLocal(category.copyWith(id: docRef.id, order: newOrder));
       return true;
     } catch (e) {
       print('카테고리 생성 실패: $e');
@@ -343,6 +362,50 @@ class CategoryService {
         print('즐겨찾기 카테고리 조회 실패: $e');
       }
       return [];
+    }
+  }
+
+  /// 카테고리 순서 업데이트
+  static Future<bool> updateCategoryOrder(String userId, List<FocusCategoryModel> reorderedCategories) async {
+    try {
+      print('카테고리 순서 업데이트 시작 - 총 ${reorderedCategories.length}개');
+      
+      // Firebase에서 배치 업데이트 시작
+      final batch = FirebaseFirestore.instance.batch();
+      
+      for (int i = 0; i < reorderedCategories.length; i++) {
+        final category = reorderedCategories[i];
+        final docRef = FirebaseFirestore.instance.collection('categories').doc(category.id);
+        
+        batch.update(docRef, {
+          'order': i,
+          'updatedAt': DateTime.now().millisecondsSinceEpoch,
+        });
+      }
+      
+      // 배치 커밋
+      await batch.commit();
+      
+      print('카테고리 순서 업데이트 완료');
+      return true;
+    } catch (e) {
+      print('카테고리 순서 업데이트 실패: $e');
+      return false;
+    }
+  }
+
+  /// 카테고리를 순서대로 정렬하여 가져오기
+  static Future<List<FocusCategoryModel>> getCategoriesOrderedByPosition(String userId) async {
+    try {
+      final categories = await getUserCategories(userId);
+      
+      // order 필드를 기준으로 정렬
+      categories.sort((a, b) => a.order.compareTo(b.order));
+      
+      return categories;
+    } catch (e) {
+      print('순서별 카테고리 조회 실패: $e');
+      return await getUserCategories(userId);
     }
   }
 

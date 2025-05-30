@@ -1,4 +1,5 @@
 import '../../models/focus_session_model.dart';
+import 'package:flutter/material.dart';
 
 class AnalyticsService {
   
@@ -492,5 +493,268 @@ class AnalyticsService {
       ..sort((a, b) => b.value.compareTo(a.value));
     
     return sortedCategories.take(3).map((e) => e.key).toList();
+  }
+
+  /// 기간별 최고 집중 분석
+  static Map<String, dynamic> getPeakFocusAnalysis(List<FocusSessionModel> sessions, String period) {
+    if (sessions.isEmpty) {
+      return {
+        'timeString': '데이터 없음',
+        'subtitle': '데이터 없음',
+        'totalMinutes': 0.0,
+      };
+    }
+
+    switch (period) {
+      case 'day':
+      case 'week':
+        // 일/주: 최고 집중 시간만 표시
+        final peakTime = getPeakFocusTime(sessions);
+        return {
+          'timeString': peakTime['timeString'],
+          'subtitle': peakTime['period'],
+          'totalMinutes': peakTime['totalMinutes'],
+        };
+        
+      case 'month':
+      case 'year':
+        // 월/년: 최고 집중 시간과 요일 표시
+        final hourlyDailyTotal = <String, double>{}; // "시간-요일" 키로 저장
+        final weekdays = ['일', '월', '화', '수', '목', '금', '토'];
+        
+        for (final session in sessions) {
+          if (session.status == FocusSessionStatus.completed) {
+            final hour = session.createdAt.hour;
+            final weekday = weekdays[session.createdAt.weekday % 7];
+            final key = '$hour-$weekday';
+            final minutes = session.elapsedSeconds / 60.0;
+            hourlyDailyTotal[key] = (hourlyDailyTotal[key] ?? 0.0) + minutes;
+          }
+        }
+        
+        if (hourlyDailyTotal.isEmpty) {
+          return {
+            'timeString': '데이터 없음',
+            'subtitle': '데이터 없음',
+            'totalMinutes': 0.0,
+          };
+        }
+        
+        final peakEntry = hourlyDailyTotal.entries.reduce((a, b) => a.value > b.value ? a : b);
+        final parts = peakEntry.key.split('-');
+        final hour = int.parse(parts[0]);
+        final weekday = parts[1];
+        
+        return {
+          'timeString': '${hour}:00 - ${hour + 1}:00',
+          'subtitle': '${weekday}요일',
+          'totalMinutes': peakEntry.value,
+        };
+        
+      default:
+        final peakTime = getPeakFocusTime(sessions);
+        return {
+          'timeString': peakTime['timeString'],
+          'subtitle': peakTime['period'],
+          'totalMinutes': peakTime['totalMinutes'],
+        };
+    }
+  }
+
+  /// 간단한 기간 총합 비교 분석
+  static Map<String, dynamic> getSimplePeriodComparison(
+    List<FocusSessionModel> sessions,
+    DateTime targetDate,
+    String periodType,
+  ) {
+    double getCurrentPeriodTotal() {
+      List<FocusSessionModel> currentSessions = [];
+      
+      switch (periodType) {
+        case 'day':
+          final targetDateOnly = DateTime(targetDate.year, targetDate.month, targetDate.day);
+          currentSessions = sessions.where((session) {
+            final sessionDate = DateTime(session.createdAt.year, session.createdAt.month, session.createdAt.day);
+            return sessionDate.isAtSameMomentAs(targetDateOnly) && session.status == FocusSessionStatus.completed;
+          }).toList();
+          break;
+        case 'week':
+          final startOfWeek = _getStartOfWeek(targetDate);
+          final endOfWeek = startOfWeek.add(const Duration(days: 6));
+          currentSessions = sessions.where((session) {
+            final sessionDate = DateTime(session.createdAt.year, session.createdAt.month, session.createdAt.day);
+            return sessionDate.isAfter(startOfWeek.subtract(const Duration(days: 1))) &&
+                   sessionDate.isBefore(endOfWeek.add(const Duration(days: 1))) &&
+                   session.status == FocusSessionStatus.completed;
+          }).toList();
+          break;
+        case 'month':
+          currentSessions = sessions.where((session) {
+            return session.createdAt.year == targetDate.year &&
+                   session.createdAt.month == targetDate.month &&
+                   session.status == FocusSessionStatus.completed;
+          }).toList();
+          break;
+        case 'year':
+          currentSessions = sessions.where((session) {
+            return session.createdAt.year == targetDate.year &&
+                   session.status == FocusSessionStatus.completed;
+          }).toList();
+          break;
+      }
+      
+      return currentSessions.fold(0.0, (sum, session) => sum + (session.elapsedSeconds / 60.0));
+    }
+
+    double getPreviousPeriodTotal(int periodsBefore) {
+      DateTime previousDate;
+      
+      switch (periodType) {
+        case 'day':
+          previousDate = targetDate.subtract(Duration(days: periodsBefore));
+          break;
+        case 'week':
+          previousDate = targetDate.subtract(Duration(days: 7 * periodsBefore));
+          break;
+        case 'month':
+          previousDate = DateTime(targetDate.year, targetDate.month - periodsBefore, targetDate.day);
+          break;
+        case 'year':
+          previousDate = DateTime(targetDate.year - periodsBefore, targetDate.month, targetDate.day);
+          break;
+        default:
+          previousDate = targetDate;
+      }
+      
+      List<FocusSessionModel> previousSessions = [];
+      
+      switch (periodType) {
+        case 'day':
+          final previousDateOnly = DateTime(previousDate.year, previousDate.month, previousDate.day);
+          previousSessions = sessions.where((session) {
+            final sessionDate = DateTime(session.createdAt.year, session.createdAt.month, session.createdAt.day);
+            return sessionDate.isAtSameMomentAs(previousDateOnly) && session.status == FocusSessionStatus.completed;
+          }).toList();
+          break;
+        case 'week':
+          final startOfWeek = _getStartOfWeek(previousDate);
+          final endOfWeek = startOfWeek.add(const Duration(days: 6));
+          previousSessions = sessions.where((session) {
+            final sessionDate = DateTime(session.createdAt.year, session.createdAt.month, session.createdAt.day);
+            return sessionDate.isAfter(startOfWeek.subtract(const Duration(days: 1))) &&
+                   sessionDate.isBefore(endOfWeek.add(const Duration(days: 1))) &&
+                   session.status == FocusSessionStatus.completed;
+          }).toList();
+          break;
+        case 'month':
+          previousSessions = sessions.where((session) {
+            return session.createdAt.year == previousDate.year &&
+                   session.createdAt.month == previousDate.month &&
+                   session.status == FocusSessionStatus.completed;
+          }).toList();
+          break;
+        case 'year':
+          previousSessions = sessions.where((session) {
+            return session.createdAt.year == previousDate.year &&
+                   session.status == FocusSessionStatus.completed;
+          }).toList();
+          break;
+      }
+      
+      return previousSessions.fold(0.0, (sum, session) => sum + (session.elapsedSeconds / 60.0));
+    }
+    
+    final currentTotal = getCurrentPeriodTotal();
+    final previousTotal = getPreviousPeriodTotal(1);
+    final beforePreviousTotal = getPreviousPeriodTotal(2);
+    
+    String getPeriodLabel(int periodsBefore) {
+      switch (periodType) {
+        case 'day':
+          if (periodsBefore == 0) return '오늘';
+          if (periodsBefore == 1) return '어제';
+          if (periodsBefore == 2) return '그저께';
+          return '${periodsBefore}일 전';
+        case 'week':
+          if (periodsBefore == 0) return '이번주';
+          if (periodsBefore == 1) return '저번주';
+          if (periodsBefore == 2) return '저저번주';
+          return '${periodsBefore}주 전';
+        case 'month':
+          if (periodsBefore == 0) return '이번달';
+          if (periodsBefore == 1) return '전월';
+          if (periodsBefore == 2) return '전전월';
+          return '${periodsBefore}개월 전';
+        case 'year':
+          if (periodsBefore == 0) return '올해';
+          if (periodsBefore == 1) return '작년';
+          if (periodsBefore == 2) return '재작년';
+          return '${periodsBefore}년 전';
+        default:
+          return '기간';
+      }
+    }
+    
+    final changePercent = previousTotal > 0 ? ((currentTotal - previousTotal) / previousTotal * 100) : 0.0;
+    
+    return {
+      'currentTotal': currentTotal,
+      'previousTotal': previousTotal,
+      'beforePreviousTotal': beforePreviousTotal,
+      'currentLabel': getPeriodLabel(0),
+      'previousLabel': getPeriodLabel(1),
+      'beforePreviousLabel': getPeriodLabel(2),
+      'changePercent': changePercent,
+      'isImproved': changePercent > 0,
+    };
+  }
+
+  /// 카테고리 분석 (집중 시간 순으로 정렬)
+  static Map<String, Map<String, dynamic>> getCategoryTimeAnalysis(
+    List<FocusSessionModel> sessions,
+    Map<String, Map<String, dynamic>> categoryInfo, // categoryId -> {name, color, icon}
+  ) {
+    final categoryTimes = <String, double>{};
+    
+    // 완료된 세션만 분석
+    final completedSessions = sessions.where((session) => 
+        session.status == FocusSessionStatus.completed && 
+        session.categoryId != null).toList();
+    
+    for (final session in completedSessions) {
+      final categoryId = session.categoryId!;
+      final minutes = session.elapsedSeconds / 60.0;
+      categoryTimes[categoryId] = (categoryTimes[categoryId] ?? 0.0) + minutes;
+    }
+    
+    if (categoryTimes.isEmpty) {
+      return {};
+    }
+    
+    // 총 집중 시간 계산
+    final totalMinutes = categoryTimes.values.fold(0.0, (sum, value) => sum + value);
+    
+    // 시간 순으로 정렬하고 결과 구성
+    final sortedEntries = categoryTimes.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    
+    final result = <String, Map<String, dynamic>>{};
+    
+    for (final entry in sortedEntries) {
+      final categoryId = entry.key;
+      final minutes = entry.value;
+      final percentage = (minutes / totalMinutes * 100);
+      final info = categoryInfo[categoryId];
+      
+      result[info?['name'] ?? '알 수 없음'] = {
+        'minutes': minutes,
+        'percentage': percentage,
+        'color': info?['color'] ?? Colors.grey.shade400,
+        'icon': info?['icon'] ?? Icons.category,
+        'categoryId': categoryId,
+      };
+    }
+    
+    return result;
   }
 } 

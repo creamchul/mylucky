@@ -5,7 +5,9 @@ import '../../services/focus_service.dart';
 import '../../models/focus_session_model.dart';
 import '../models/focus_category_model.dart'; // 카테고리 모델 추가
 import '../services/category_service.dart'; // 카테고리 서비스 추가
+import '../constants/app_colors.dart'; // 앱 색상 시스템 추가
 import './focusing_page.dart';
+import './category_management_page.dart'; // 카테고리 관리 페이지 추가
 
 class FocusSetupPage extends StatefulWidget {
   final UserModel currentUser; // 현재 사용자 정보
@@ -78,7 +80,8 @@ class _FocusSetupPageState extends State<FocusSetupPage> with TickerProviderStat
   // 카테고리 로딩 함수 추가
   Future<void> _loadCategories() async {
     try {
-      final categories = await CategoryService.getUserCategories(widget.currentUser.id);
+      // 순서대로 정렬된 카테고리 로드
+      final categories = await CategoryService.getCategoriesOrderedByPosition(widget.currentUser.id);
       final now = DateTime.now();
       final recommendedCategories = await CategoryService.getMostUsedCategories(widget.currentUser.id);
       
@@ -151,40 +154,36 @@ class _FocusSetupPageState extends State<FocusSetupPage> with TickerProviderStat
     
     final duration = _selectedDurationMinutes.toInt();
     if (duration <= 15) {
-      return '짧고 집중적인 시간이에요! 🚀';
+      return '짧고 집중적인 시간이에요! 🌱';
     } else if (duration <= 30) {
-      return '완벽한 집중 시간이에요! ⭐';
+      return '완벽한 집중 시간이에요! 🌿';
     } else if (duration <= 60) {
-      return '깊은 집중의 시간이에요! 🎯';
+      return '깊은 집중의 시간이에요! 🌳';
     } else {
-      return '도전적인 긴 집중이에요! 💪';
+      return '도전적인 긴 집중이에요! 🌲';
     }
-  }
-
-  Color _getThemeColor() {
-    return Colors.teal.shade400;
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFAFAFA),
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
           icon: Icon(
             Icons.arrow_back_ios,
-            color: _getThemeColor(),
+            color: Colors.grey.shade700,
           ),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           '집중하기 설정',
           style: TextStyle(
-            color: _getThemeColor(),
-            fontWeight: FontWeight.w600,
-            fontSize: 18,
+            color: Colors.grey.shade800,
+            fontWeight: FontWeight.w700,
+            fontSize: 20,
           ),
         ),
         centerTitle: true,
@@ -192,11 +191,13 @@ class _FocusSetupPageState extends State<FocusSetupPage> with TickerProviderStat
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
             colors: [
-              Color(0xFFFAFAFA),
-              Color(0xFFF0F9FF),
+              Color(0xFFFDFDFD),
+              Color(0xFFF8F9FA),
+              Color(0xFFF0F8F5),
+              Color(0xFFFFF8F3),
             ],
           ),
         ),
@@ -204,87 +205,63 @@ class _FocusSetupPageState extends State<FocusSetupPage> with TickerProviderStat
           child: FadeTransition(
             opacity: _fadeAnimation,
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24.0),
+              padding: const EdgeInsets.all(20.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // 헤더 섹션
-                  ScaleTransition(
-                    scale: _scaleAnimation,
-                    child: Container(
-                      padding: const EdgeInsets.all(24),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: _getThemeColor().withOpacity(0.1),
-                            blurRadius: 20,
-                            offset: const Offset(0, 10),
-                          ),
-                        ],
+                  // 환영 메시지
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: AppColors.focusMintLight.withOpacity(0.6),
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(
+                        color: AppColors.focusMint.withOpacity(0.3),
+                        width: 1.5,
                       ),
-                      child: Column(
-                        children: [
-                          // 나무 아이콘과 제목
-                          Container(
-                            width: 120,
-                            height: 120,
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [
-                                  _getThemeColor().withOpacity(0.1),
-                                  _getThemeColor().withOpacity(0.2),
-                                ],
-                              ),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              Icons.park_outlined,
-                              size: 60,
-                              color: _getThemeColor(),
-                            ),
+                    ),
+                    child: Column(
+                      children: [
+                        Text(
+                          '깊은 집중의 시간을 시작해요',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.focusMint,
                           ),
-                          const SizedBox(height: 16),
-                          Text(
-                            '나무와 함께 집중해요',
-                            style: TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.grey.shade800,
-                            ),
-                            textAlign: TextAlign.center,
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          '나무와 함께 성장하는 특별한 여정',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey.shade600,
+                            fontWeight: FontWeight.w500,
                           ),
-                          const SizedBox(height: 8),
-                          Text(
-                            '설정한 시간 동안 집중하면\n아름다운 나무가 자라납니다',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey.shade600,
-                              height: 1.5,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                      ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
                     ),
                   ),
                   
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 24),
                   
                   // 모드 선택 섹션
                   Container(
                     padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
+                      color: Colors.white.withOpacity(0.9),
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(
+                        color: AppColors.focusMint.withOpacity(0.2),
+                        width: 1.5,
+                      ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.grey.withOpacity(0.1),
-                          blurRadius: 15,
-                          offset: const Offset(0, 5),
+                          color: AppColors.focusMint.withOpacity(0.1),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
                         ),
                       ],
                     ),
@@ -296,13 +273,13 @@ class _FocusSetupPageState extends State<FocusSetupPage> with TickerProviderStat
                             Container(
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
-                                color: _getThemeColor().withOpacity(0.1),
-                                shape: BoxShape.circle,
+                                color: AppColors.focusMint.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(10),
                               ),
                               child: Icon(
                                 Icons.touch_app_outlined,
-                                size: 20,
-                                color: _getThemeColor(),
+                                size: 22,
+                                color: AppColors.focusMint,
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -310,7 +287,7 @@ class _FocusSetupPageState extends State<FocusSetupPage> with TickerProviderStat
                               '집중 모드 선택',
                               style: TextStyle(
                                 fontSize: 18,
-                                fontWeight: FontWeight.w600,
+                                fontWeight: FontWeight.w700,
                                 color: Colors.grey.shade800,
                               ),
                             ),
@@ -319,7 +296,6 @@ class _FocusSetupPageState extends State<FocusSetupPage> with TickerProviderStat
                         
                         const SizedBox(height: 20),
                         
-                        // 모드 선택 버튼들
                         Row(
                           children: [
                             Expanded(
@@ -347,20 +323,24 @@ class _FocusSetupPageState extends State<FocusSetupPage> with TickerProviderStat
                     ),
                   ),
                   
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 24),
                   
-                  // 시간 설정 섹션 (타이머 모드에서만 표시)
+                  // 시간 설정 섹션
                   if (_selectedMode == FocusMode.timer)
                     Container(
                       padding: const EdgeInsets.all(24),
                       decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
+                        color: Colors.white.withOpacity(0.9),
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(
+                          color: AppColors.focusMint.withOpacity(0.2),
+                          width: 1.5,
+                        ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.grey.withOpacity(0.1),
-                            blurRadius: 15,
-                            offset: const Offset(0, 5),
+                            color: AppColors.focusMint.withOpacity(0.1),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
                           ),
                         ],
                       ),
@@ -372,13 +352,13 @@ class _FocusSetupPageState extends State<FocusSetupPage> with TickerProviderStat
                               Container(
                                 padding: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
-                                  color: _getThemeColor().withOpacity(0.1),
-                                  shape: BoxShape.circle,
+                                  color: AppColors.focusMint.withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(10),
                                 ),
                                 child: Icon(
                                   Icons.timer_outlined,
-                                  size: 20,
-                                  color: _getThemeColor(),
+                                  size: 22,
+                                  color: AppColors.focusMint,
                                 ),
                               ),
                               const SizedBox(width: 12),
@@ -386,30 +366,29 @@ class _FocusSetupPageState extends State<FocusSetupPage> with TickerProviderStat
                                 '집중 시간 설정',
                                 style: TextStyle(
                                   fontSize: 18,
-                                  fontWeight: FontWeight.w600,
+                                  fontWeight: FontWeight.w700,
                                   color: Colors.grey.shade800,
                                 ),
                               ),
                             ],
                           ),
                           
-                          const SizedBox(height: 24),
+                          const SizedBox(height: 20),
                           
-                          // 시간 표시
                           Center(
                             child: Container(
                               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                               decoration: BoxDecoration(
                                 gradient: LinearGradient(
                                   colors: [
-                                    _getThemeColor().withOpacity(0.1),
-                                    _getThemeColor().withOpacity(0.05),
+                                    AppColors.focusMint.withOpacity(0.1),
+                                    AppColors.focusMint.withOpacity(0.05),
                                   ],
                                 ),
                                 borderRadius: BorderRadius.circular(16),
                                 border: Border.all(
-                                  color: _getThemeColor().withOpacity(0.2),
-                                  width: 1,
+                                  color: AppColors.focusMint.withOpacity(0.3),
+                                  width: 1.5,
                                 ),
                               ),
                               child: Column(
@@ -417,16 +396,16 @@ class _FocusSetupPageState extends State<FocusSetupPage> with TickerProviderStat
                                   Text(
                                     '${_selectedDurationMinutes.toInt()}분',
                                     style: TextStyle(
-                                      fontSize: 48,
+                                      fontSize: 40,
                                       fontWeight: FontWeight.bold,
-                                      color: _getThemeColor(),
+                                      color: AppColors.focusMint,
                                     ),
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
                                     _getMotivationalMessage(),
                                     style: TextStyle(
-                                      fontSize: 14,
+                                      fontSize: 13,
                                       color: Colors.grey.shade600,
                                       fontWeight: FontWeight.w500,
                                     ),
@@ -436,15 +415,14 @@ class _FocusSetupPageState extends State<FocusSetupPage> with TickerProviderStat
                             ),
                           ),
                           
-                          const SizedBox(height: 32),
+                          const SizedBox(height: 24),
                           
-                          // 슬라이더
                           SliderTheme(
                             data: SliderTheme.of(context).copyWith(
-                              activeTrackColor: _getThemeColor(),
-                              inactiveTrackColor: _getThemeColor().withOpacity(0.2),
-                              thumbColor: _getThemeColor(),
-                              overlayColor: _getThemeColor().withOpacity(0.2),
+                              activeTrackColor: AppColors.focusMint,
+                              inactiveTrackColor: AppColors.focusMint.withOpacity(0.2),
+                              thumbColor: AppColors.focusMint,
+                              overlayColor: AppColors.focusMint.withOpacity(0.2),
                               thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 12),
                               overlayShape: const RoundSliderOverlayShape(overlayRadius: 20),
                             ),
@@ -461,7 +439,6 @@ class _FocusSetupPageState extends State<FocusSetupPage> with TickerProviderStat
                             ),
                           ),
                           
-                          // 슬라이더 라벨
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 16),
                             child: Row(
@@ -472,7 +449,7 @@ class _FocusSetupPageState extends State<FocusSetupPage> with TickerProviderStat
                                   style: TextStyle(
                                     fontSize: 12,
                                     color: Colors.grey.shade500,
-                                    fontWeight: FontWeight.w500,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
                                 Text(
@@ -480,7 +457,7 @@ class _FocusSetupPageState extends State<FocusSetupPage> with TickerProviderStat
                                   style: TextStyle(
                                     fontSize: 12,
                                     color: Colors.grey.shade500,
-                                    fontWeight: FontWeight.w500,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
                               ],
@@ -490,92 +467,79 @@ class _FocusSetupPageState extends State<FocusSetupPage> with TickerProviderStat
                       ),
                     ),
                   
-                  // 스톱워치 모드 설명 섹션 (스톱워치 모드에서만 표시)
+                  // 스톱워치 모드 설명
                   if (_selectedMode == FocusMode.stopwatch)
                     Container(
                       padding: const EdgeInsets.all(24),
                       decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
+                        color: Colors.white.withOpacity(0.9),
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(
+                          color: AppColors.focusMint.withOpacity(0.2),
+                          width: 1.5,
+                        ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.grey.withOpacity(0.1),
-                            blurRadius: 15,
-                            offset: const Offset(0, 5),
+                            color: AppColors.focusMint.withOpacity(0.1),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
                           ),
                         ],
                       ),
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: _getThemeColor().withOpacity(0.1),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(
-                                  Icons.timeline,
-                                  size: 20,
-                                  color: _getThemeColor(),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Text(
-                                '스톱워치 모드',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.grey.shade800,
-                                ),
-                              ),
-                            ],
-                          ),
-                          
-                          const SizedBox(height: 16),
-                          
-                          // 나무 성장 설명 (간소화)
                           Container(
-                            alignment: Alignment.center,
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [
-                                  _getThemeColor().withOpacity(0.05),
-                                  _getThemeColor().withOpacity(0.02),
-                                ],
-                              ),
-                              borderRadius: BorderRadius.circular(12),
+                              color: AppColors.focusMint.withOpacity(0.1),
+                              shape: BoxShape.circle,
                             ),
-                            child: Text(
-                              '15분마다 나무가 성장해요\n90분 이상 집중하면 특별한 대나무를 얻을 수 있어요!',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey.shade600,
-                                height: 1.5,
-                              ),
-                              textAlign: TextAlign.center,
+                            child: Icon(
+                              Icons.timer,
+                              size: 40,
+                              color: AppColors.focusMint,
                             ),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            '자유로운 집중 시간',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey.shade800,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            '시간 제한 없이 원하는 만큼\n집중해보세요 ⏱️',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey.shade600,
+                              height: 1.4,
+                            ),
+                            textAlign: TextAlign.center,
                           ),
                         ],
                       ),
                     ),
                   
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 24),
                   
-                  // 카테고리 선택 섹션 추가
+                  // 카테고리 선택 섹션
                   Container(
                     padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
+                      color: Colors.white.withOpacity(0.9),
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(
+                        color: AppColors.focusMint.withOpacity(0.2),
+                        width: 1.5,
+                      ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.grey.withOpacity(0.1),
-                          blurRadius: 15,
-                          offset: const Offset(0, 5),
+                          color: AppColors.focusMint.withOpacity(0.1),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
                         ),
                       ],
                     ),
@@ -587,13 +551,13 @@ class _FocusSetupPageState extends State<FocusSetupPage> with TickerProviderStat
                             Container(
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
-                                color: _getThemeColor().withOpacity(0.1),
-                                shape: BoxShape.circle,
+                                color: AppColors.focusMint.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(10),
                               ),
                               child: Icon(
                                 Icons.category_outlined,
-                                size: 20,
-                                color: _getThemeColor(),
+                                size: 22,
+                                color: AppColors.focusMint,
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -601,160 +565,110 @@ class _FocusSetupPageState extends State<FocusSetupPage> with TickerProviderStat
                               '집중 카테고리 선택',
                               style: TextStyle(
                                 fontSize: 18,
-                                fontWeight: FontWeight.w600,
+                                fontWeight: FontWeight.w700,
                                 color: Colors.grey.shade800,
                               ),
                             ),
-                            const Spacer(),
-                            if (!_isLoadingCategories && _selectedCategory != null)
-                              Text(
-                                '선택함',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: _getThemeColor(),
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
                           ],
                         ),
                         
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 16),
                         
                         if (_isLoadingCategories)
-                          Center(
+                          const Center(
                             child: Padding(
-                              padding: const EdgeInsets.all(20),
-                              child: CircularProgressIndicator(
-                                color: _getThemeColor(),
-                                strokeWidth: 2,
+                              padding: EdgeInsets.all(20),
+                              child: CircularProgressIndicator(),
+                            ),
+                          )
+                        else if (_selectedCategory != null)
+                          GestureDetector(
+                            onTap: () => _showCategorySelector(),
+                            child: Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: _selectedCategory!.color == Colors.transparent 
+                                    ? AppColors.focusMint.withOpacity(0.1)
+                                    : _selectedCategory!.color.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: _selectedCategory!.color == Colors.transparent 
+                                      ? AppColors.focusMint.withOpacity(0.3)
+                                      : _selectedCategory!.color.withOpacity(0.3),
+                                  width: 1.5,
+                                ),
                               ),
-                            ),
-                          )
-                        else if (_categories.isEmpty)
-                          Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade50,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.grey.shade200),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.info_outline,
-                                  color: Colors.grey.shade500,
-                                  size: 20,
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Text(
-                                    '카테고리가 없습니다. 먼저 카테고리를 생성해주세요.',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: Colors.grey.shade600,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          )
-                        else
-                          Column(
-                            children: [
-                              // 선택된 카테고리 표시
-                              if (_selectedCategory != null)
-                                Container(
-                                  padding: const EdgeInsets.all(16),
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      colors: [
-                                        _selectedCategory!.color.withValues(alpha: 0.1),
-                                        _selectedCategory!.color.withValues(alpha: 0.05),
-                                      ],
-                                    ),
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                      color: _selectedCategory!.color.withValues(alpha: 0.3),
-                                    ),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Container(
-                                        width: 40,
-                                        height: 40,
-                                        decoration: BoxDecoration(
-                                          color: _selectedCategory!.color.withValues(alpha: 0.2),
-                                          borderRadius: BorderRadius.circular(10),
-                                        ),
-                                        child: Icon(
-                                          _selectedCategory!.icon,
-                                          color: _selectedCategory!.color,
-                                          size: 20,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 16),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              _selectedCategory!.name,
-                                              style: TextStyle(
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.w600,
-                                                color: _selectedCategory!.color,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 4),
-                                            Text(
-                                              _selectedCategory!.description,
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                color: Colors.grey.shade600,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      Icon(
-                                        Icons.check_circle,
-                                        color: _selectedCategory!.color,
-                                        size: 24,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              
-                              const SizedBox(height: 16),
-                              
-                              // 카테고리 변경 버튼
-                              SizedBox(
-                                width: double.infinity,
-                                child: OutlinedButton.icon(
-                                  onPressed: () => _showCategorySelector(),
-                                  icon: Icon(
-                                    Icons.swap_horiz,
-                                    color: _getThemeColor(),
-                                    size: 20,
-                                  ),
-                                  label: Text(
-                                    '카테고리 변경',
-                                    style: TextStyle(
-                                      color: _getThemeColor(),
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                  style: OutlinedButton.styleFrom(
-                                    side: BorderSide(color: _getThemeColor()),
-                                    padding: const EdgeInsets.symmetric(vertical: 12),
-                                    shape: RoundedRectangleBorder(
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 44,
+                                    height: 44,
+                                    decoration: BoxDecoration(
+                                      color: _selectedCategory!.color == Colors.transparent 
+                                          ? AppColors.focusMint.withOpacity(0.2)
+                                          : _selectedCategory!.color.withOpacity(0.2),
                                       borderRadius: BorderRadius.circular(12),
                                     ),
+                                    child: Icon(
+                                      _selectedCategory!.icon,
+                                      color: _selectedCategory!.color == Colors.transparent 
+                                          ? AppColors.focusMint
+                                          : _selectedCategory!.color,
+                                      size: 22,
+                                    ),
                                   ),
-                                ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Text(
+                                      _selectedCategory!.name,
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                        color: _selectedCategory!.color == Colors.transparent 
+                                            ? AppColors.focusMint
+                                            : _selectedCategory!.color,
+                                      ),
+                                    ),
+                                  ),
+                                  Icon(
+                                    Icons.chevron_right,
+                                    color: _selectedCategory!.color == Colors.transparent 
+                                        ? AppColors.focusMint
+                                        : _selectedCategory!.color,
+                                    size: 24,
+                                  ),
+                                ],
                               ),
-                            ],
+                            ),
                           ),
+                        
+                        const SizedBox(height: 16),
+                        
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: () => _navigateToCategoryManagement(),
+                            icon: Icon(
+                              Icons.settings,
+                              color: AppColors.focusMint,
+                              size: 20,
+                            ),
+                            label: Text(
+                              '카테고리 관리',
+                              style: TextStyle(
+                                color: AppColors.focusMint,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              side: BorderSide(color: AppColors.focusMint, width: 1.5),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -763,25 +677,25 @@ class _FocusSetupPageState extends State<FocusSetupPage> with TickerProviderStat
                   
                   // 시작 버튼
                   Container(
-                    height: 64,
+                    height: 60,
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(18),
                       boxShadow: [
                         BoxShadow(
-                          color: _getThemeColor().withOpacity(0.3),
-                          blurRadius: 15,
-                          offset: const Offset(0, 8),
+                          color: AppColors.focusMint.withOpacity(0.4),
+                          blurRadius: 12,
+                          offset: const Offset(0, 6),
                         ),
                       ],
                     ),
                     child: ElevatedButton(
                       onPressed: _isLoading ? null : _startFocusSession,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: _getThemeColor(),
+                        backgroundColor: AppColors.focusMint,
                         foregroundColor: Colors.white,
                         elevation: 0,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(18),
                         ),
                         padding: const EdgeInsets.symmetric(vertical: 16),
                       ),
@@ -799,10 +713,10 @@ class _FocusSetupPageState extends State<FocusSetupPage> with TickerProviderStat
                                 ),
                                 const SizedBox(width: 12),
                                 const Text(
-                                  '준비 중...',
+                                  '나무가 준비 중이에요...',
                                   style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w600,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
                                   ),
                                 ),
                               ],
@@ -811,15 +725,15 @@ class _FocusSetupPageState extends State<FocusSetupPage> with TickerProviderStat
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Icon(
-                                  Icons.play_arrow_rounded,
-                                  size: 28,
+                                  Icons.eco,
+                                  size: 24,
                                 ),
                                 const SizedBox(width: 8),
                                 const Text(
-                                  '집중 시작하기',
+                                  '함께 성장하기 시작',
                                   style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w600,
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w700,
                                   ),
                                 ),
                               ],
@@ -827,52 +741,7 @@ class _FocusSetupPageState extends State<FocusSetupPage> with TickerProviderStat
                     ),
                   ),
                   
-                  const SizedBox(height: 24),
-                  
-                  // 팁 섹션
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.amber.shade50,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: Colors.amber.shade200,
-                        width: 1,
-                      ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.lightbulb_outline,
-                              color: Colors.amber.shade700,
-                              size: 20,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              '집중 팁',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.amber.shade800,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          '• 휴대폰을 멀리 두고 시작하세요\n• 조용하고 편안한 환경을 만드세요\n• 집중 중에는 앱을 종료하지 마세요\n• 완료하면 포인트를 받을 수 있어요!',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.amber.shade700,
-                            height: 1.6,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                  const SizedBox(height: 20),
                 ],
               ),
             ),
@@ -892,15 +761,15 @@ class _FocusSetupPageState extends State<FocusSetupPage> with TickerProviderStat
     return ElevatedButton(
       onPressed: () => setState(() => _selectedMode = mode),
       style: ElevatedButton.styleFrom(
-        backgroundColor: isSelected ? _getThemeColor() : Colors.white,
+        backgroundColor: isSelected ? AppColors.focusMint : Colors.white,
         foregroundColor: isSelected ? Colors.white : Colors.grey.shade700,
-        elevation: isSelected ? 8 : 2,
-        shadowColor: isSelected ? _getThemeColor().withOpacity(0.3) : Colors.grey.withOpacity(0.1),
+        elevation: isSelected ? 6 : 2,
+        shadowColor: isSelected ? AppColors.focusMint.withOpacity(0.4) : Colors.grey.withOpacity(0.1),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
           side: BorderSide(
-            color: isSelected ? _getThemeColor() : Colors.grey.shade200,
-            width: isSelected ? 0 : 1,
+            color: isSelected ? AppColors.focusMint : AppColors.focusMint.withOpacity(0.3),
+            width: isSelected ? 0 : 1.5,
           ),
         ),
         padding: const EdgeInsets.all(20),
@@ -910,14 +779,14 @@ class _FocusSetupPageState extends State<FocusSetupPage> with TickerProviderStat
           Icon(
             icon,
             size: 32,
-            color: isSelected ? Colors.white : _getThemeColor(),
+            color: isSelected ? Colors.white : AppColors.focusMint,
           ),
           const SizedBox(height: 12),
           Text(
             title,
             style: TextStyle(
               fontSize: 16,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w700,
               color: isSelected ? Colors.white : Colors.grey.shade800,
             ),
           ),
@@ -927,6 +796,7 @@ class _FocusSetupPageState extends State<FocusSetupPage> with TickerProviderStat
             style: TextStyle(
               fontSize: 12,
               color: isSelected ? Colors.white.withOpacity(0.9) : Colors.grey.shade500,
+              fontWeight: FontWeight.w500,
             ),
             textAlign: TextAlign.center,
           ),
@@ -935,7 +805,6 @@ class _FocusSetupPageState extends State<FocusSetupPage> with TickerProviderStat
     );
   }
 
-  // 카테고리 선택 다이얼로그 표시
   void _showCategorySelector() {
     showModalBottomSheet(
       context: context,
@@ -943,16 +812,22 @@ class _FocusSetupPageState extends State<FocusSetupPage> with TickerProviderStat
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
         height: MediaQuery.of(context).size.height * 0.7,
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.only(
+          borderRadius: const BorderRadius.only(
             topLeft: Radius.circular(24),
             topRight: Radius.circular(24),
           ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.3),
+              blurRadius: 10,
+              offset: const Offset(0, -3),
+            ),
+          ],
         ),
         child: Column(
           children: [
-            // 핸들 바
             Container(
               margin: const EdgeInsets.only(top: 12),
               width: 40,
@@ -963,11 +838,23 @@ class _FocusSetupPageState extends State<FocusSetupPage> with TickerProviderStat
               ),
             ),
             
-            // 헤더
             Padding(
               padding: const EdgeInsets.all(20),
               child: Row(
                 children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.focusMint.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      Icons.category,
+                      color: AppColors.focusMint,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
                   Text(
                     '카테고리 선택',
                     style: TextStyle(
@@ -976,24 +863,98 @@ class _FocusSetupPageState extends State<FocusSetupPage> with TickerProviderStat
                       color: Colors.grey.shade800,
                     ),
                   ),
-                  const Spacer(),
-                  IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: Icon(
-                      Icons.close,
-                      color: Colors.grey.shade600,
-                    ),
-                  ),
                 ],
               ),
             ),
             
-            // 추천 카테고리 섹션
-            _buildRecommendedSection(),
-            
-            // 모든 카테고리 목록
             Expanded(
-              child: _buildAllCategoriesSection(),
+              child: ListView.builder(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                itemCount: _categories.length,
+                itemBuilder: (context, index) {
+                  final category = _categories[index];
+                  final isSelected = category.id == _selectedCategory?.id;
+                  
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    child: InkWell(
+                      onTap: () {
+                        setState(() {
+                          _selectedCategory = category;
+                        });
+                        Navigator.pop(context);
+                      },
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: isSelected 
+                              ? AppColors.focusMint.withOpacity(0.1)
+                              : Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: isSelected 
+                                ? AppColors.focusMint
+                                : Colors.grey.shade200,
+                            width: isSelected ? 2 : 1,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: category.color == Colors.transparent
+                                    ? AppColors.focusMint.withOpacity(0.2)
+                                    : category.color.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Icon(
+                                category.icon,
+                                color: category.color == Colors.transparent
+                                    ? AppColors.focusMint
+                                    : category.color,
+                                size: 20,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    category.name,
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.grey.shade800,
+                                    ),
+                                  ),
+                                  if (category.description.isNotEmpty)
+                                    Text(
+                                      category.description,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey.shade600,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                            if (isSelected)
+                              Icon(
+                                Icons.check_circle,
+                                color: AppColors.focusMint,
+                                size: 24,
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
             ),
           ],
         ),
@@ -1001,226 +962,16 @@ class _FocusSetupPageState extends State<FocusSetupPage> with TickerProviderStat
     );
   }
 
-  // 추천 카테고리 섹션
-  Widget _buildRecommendedSection() {
-    // 즐겨찾기 카테고리 필터링
-    List<FocusCategoryModel> favoriteCategories = _categories
-        .where((category) => category.isFavorite)
-        .toList();
-    
-    // 즐겨찾기가 없으면 자주 사용하는 상위 3개
-    if (favoriteCategories.isEmpty) {
-      favoriteCategories = _categories.take(3).toList();
+  void _navigateToCategoryManagement() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CategoryManagementPage(currentUser: widget.currentUser),
+      ),
+    );
+
+    if (result == true) {
+      _loadCategories();
     }
-    
-    if (favoriteCategories.isEmpty) return const SizedBox.shrink();
-    
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Row(
-            children: [
-              Icon(
-                Icons.favorite,
-                color: Colors.pink.shade600,
-                size: 20,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                '즐겨찾기 카테고리',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.grey.shade800,
-                ),
-              ),
-            ],
-          ),
-        ),
-        
-        const SizedBox(height: 12),
-        
-        SizedBox(
-          height: 100,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            itemCount: favoriteCategories.length,
-            itemBuilder: (context, index) {
-              final category = favoriteCategories[index];
-              final isSelected = _selectedCategory?.id == category.id;
-              
-              return Container(
-                margin: const EdgeInsets.only(right: 12),
-                child: _buildRecommendedCategoryCard(category, isSelected),
-              );
-            },
-          ),
-        ),
-        
-        const SizedBox(height: 20),
-        
-        Divider(color: Colors.grey.shade200),
-      ],
-    );
-  }
-
-  // 추천 카테고리 카드
-  Widget _buildRecommendedCategoryCard(FocusCategoryModel category, bool isSelected) {
-    return GestureDetector(
-      onTap: () {
-        setState(() => _selectedCategory = category);
-        Navigator.pop(context);
-      },
-      child: Container(
-        width: 120,
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: isSelected 
-                ? [category.color.withValues(alpha: 0.2), category.color.withValues(alpha: 0.1)]
-                : [Colors.grey.shade50, Colors.white],
-          ),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isSelected ? category.color : Colors.grey.shade200,
-            width: isSelected ? 2 : 1,
-          ),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: category.color.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(
-                category.icon,
-                color: category.color,
-                size: 20,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              category.name,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: isSelected ? category.color : Colors.grey.shade700,
-              ),
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            if (isSelected)
-              Container(
-                margin: const EdgeInsets.only(top: 4),
-                child: Icon(
-                  Icons.check_circle,
-                  color: category.color,
-                  size: 16,
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // 모든 카테고리 섹션
-  Widget _buildAllCategoriesSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Text(
-            '모든 카테고리',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey.shade800,
-            ),
-          ),
-        ),
-        
-        const SizedBox(height: 12),
-        
-        Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            itemCount: _categories.length,
-            itemBuilder: (context, index) {
-              final category = _categories[index];
-              final isSelected = _selectedCategory?.id == category.id;
-              
-              return Container(
-                margin: const EdgeInsets.only(bottom: 8),
-                child: _buildCategoryListItem(category, isSelected),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  // 카테고리 리스트 아이템
-  Widget _buildCategoryListItem(FocusCategoryModel category, bool isSelected) {
-    return ListTile(
-      onTap: () {
-        setState(() => _selectedCategory = category);
-        Navigator.pop(context);
-      },
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      tileColor: isSelected ? category.color.withValues(alpha: 0.1) : null,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: isSelected ? category.color : Colors.transparent,
-          width: 1,
-        ),
-      ),
-      leading: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: category.color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Icon(
-          category.icon,
-          color: category.color,
-          size: 20,
-        ),
-      ),
-      title: Text(
-        category.name,
-        style: TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-          color: isSelected ? category.color : Colors.grey.shade800,
-        ),
-      ),
-      subtitle: Text(
-        category.description,
-        style: TextStyle(
-          fontSize: 12,
-          color: Colors.grey.shade600,
-        ),
-      ),
-      trailing: isSelected
-          ? Icon(
-              Icons.check_circle,
-              color: category.color,
-              size: 24,
-            )
-          : null,
-    );
   }
 } 

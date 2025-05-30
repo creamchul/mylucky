@@ -62,4 +62,29 @@ class AppColors {
   static Color get yellow400 => Colors.yellow.shade400;
   static Color get yellow600 => Colors.yellow.shade600;
   static Color get red600 => Colors.red.shade600;
+
+  // New Pastel Color System for Home Features
+  // 집중하기 - 연한 민트그린
+  static const Color focusMint = Color(0xFF81C784);
+  static const Color focusMintLight = Color(0xFFE8F5E8);
+  static const Color focusMintDark = Color(0xFF66BB6A);
+  
+  // 펫 케어 - 연한 코랄  
+  static const Color petCoral = Color(0xFFFF8A65);
+  static const Color petCoralLight = Color(0xFFFFF3E0);
+  static const Color petCoralDark = Color(0xFFFF7043);
+  
+  // 오늘의 카드 - 연한 라벤더
+  static const Color cardLavender = Color(0xFFB39DDB);
+  static const Color cardLavenderLight = Color(0xFFF3E5F5);
+  static const Color cardLavenderDark = Color(0xFF9575CD);
+  
+  // 오늘의 루틴 - 연한 스카이블루
+  static const Color routineSky = Color(0xFF64B5F6);
+  static const Color routineSkyLight = Color(0xFFE1F5FE);
+  static const Color routineSkyDark = Color(0xFF42A5F5);
+  
+  // 출석 - 성취감 민트그린
+  static const Color attendanceGreen = Color(0xFF4CAF50);
+  static const Color attendanceGreenLight = Color(0xFFE8F5E8);
 }

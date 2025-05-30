@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import '../models/focus_category_model.dart';
 import '../services/category_service.dart';
+import '../constants/app_colors.dart'; // 앱 색상 시스템 추가
 
 class CategoryEditPage extends StatefulWidget {
   final String userId;
-  final FocusCategoryModel? category; // null이면 새 카테고리 생성
+  final FocusCategoryModel? category;
 
   const CategoryEditPage({
     super.key,
@@ -18,7 +19,6 @@ class CategoryEditPage extends StatefulWidget {
 
 class _CategoryEditPageState extends State<CategoryEditPage> {
   final _nameController = TextEditingController();
-  final _descriptionController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   
   late IconData _selectedIcon;
@@ -32,26 +32,23 @@ class _CategoryEditPageState extends State<CategoryEditPage> {
     super.initState();
     if (isEditing) {
       _nameController.text = widget.category!.name;
-      _descriptionController.text = widget.category!.description;
       _selectedIcon = widget.category!.icon;
       _selectedColor = widget.category!.color;
     } else {
-      _selectedIcon = Icons.work;
-      _selectedColor = Colors.blue;
+      _selectedIcon = Icons.work_outline;
+      _selectedColor = AppColors.focusMint;
     }
   }
 
   @override
   void dispose() {
     _nameController.dispose();
-    _descriptionController.dispose();
     super.dispose();
   }
 
   Future<void> _saveCategory() async {
     if (!_formKey.currentState!.validate()) return;
 
-    // 카테고리 이름 중복 체크
     final nameExists = await CategoryService.isCategoryNameExists(
       widget.userId,
       _nameController.text.trim(),
@@ -60,9 +57,10 @@ class _CategoryEditPageState extends State<CategoryEditPage> {
 
     if (nameExists) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('이미 존재하는 카테고리 이름입니다'),
-          backgroundColor: Colors.orange,
+        SnackBar(
+          content: const Text('이미 존재하는 카테고리 이름입니다'),
+          backgroundColor: Colors.orange.shade400,
+          behavior: SnackBarBehavior.floating,
         ),
       );
       return;
@@ -74,10 +72,9 @@ class _CategoryEditPageState extends State<CategoryEditPage> {
       final now = DateTime.now();
       
       if (isEditing) {
-        // 수정
         final updatedCategory = widget.category!.copyWith(
           name: _nameController.text.trim(),
-          description: _descriptionController.text.trim(),
+          description: '',
           icon: _selectedIcon,
           color: _selectedColor,
           updatedAt: now,
@@ -87,9 +84,10 @@ class _CategoryEditPageState extends State<CategoryEditPage> {
         
         if (success) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('카테고리가 수정되었습니다'),
-              backgroundColor: Colors.green,
+            SnackBar(
+              content: const Text('카테고리가 수정되었습니다'),
+              backgroundColor: AppColors.focusMint,
+              behavior: SnackBarBehavior.floating,
             ),
           );
           Navigator.pop(context, true);
@@ -97,11 +95,10 @@ class _CategoryEditPageState extends State<CategoryEditPage> {
           throw Exception('카테고리 수정에 실패했습니다');
         }
       } else {
-        // 생성
         final newCategory = FocusCategoryModel(
-          id: '', // CategoryService에서 생성
+          id: '',
           name: _nameController.text.trim(),
-          description: _descriptionController.text.trim(),
+          description: '',
           icon: _selectedIcon,
           color: _selectedColor,
           isDefault: false,
@@ -113,9 +110,10 @@ class _CategoryEditPageState extends State<CategoryEditPage> {
         
         if (success) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('새 카테고리가 생성되었습니다'),
-              backgroundColor: Colors.green,
+            SnackBar(
+              content: const Text('새 카테고리가 생성되었습니다'),
+              backgroundColor: AppColors.focusMint,
+              behavior: SnackBarBehavior.floating,
             ),
           );
           Navigator.pop(context, true);
@@ -127,7 +125,8 @@ class _CategoryEditPageState extends State<CategoryEditPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('오류: $e'),
-          backgroundColor: Colors.red,
+          backgroundColor: Colors.red.shade400,
+          behavior: SnackBarBehavior.floating,
         ),
       );
     } finally {
@@ -139,7 +138,34 @@ class _CategoryEditPageState extends State<CategoryEditPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('아이콘 선택'),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.focusMint.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                Icons.emoji_symbols,
+                color: AppColors.focusMint,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              '아이콘 선택',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: Colors.grey.shade800,
+              ),
+            ),
+          ],
+        ),
         content: SizedBox(
           width: double.maxFinite,
           height: 300,
@@ -161,12 +187,19 @@ class _CategoryEditPageState extends State<CategoryEditPage> {
                 },
                 child: Container(
                   decoration: BoxDecoration(
-                    color: isSelected ? _selectedColor : Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(8),
+                    color: isSelected ? AppColors.focusMint : Colors.white,
+                    borderRadius: BorderRadius.circular(10),
                     border: Border.all(
-                      color: isSelected ? _selectedColor : Colors.grey.shade300,
-                      width: 2,
+                      color: isSelected ? AppColors.focusMint : Colors.grey.shade300,
+                      width: isSelected ? 2 : 1,
                     ),
+                    boxShadow: isSelected ? [
+                      BoxShadow(
+                        color: AppColors.focusMint.withOpacity(0.3),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ] : null,
                   ),
                   child: Icon(
                     icon,
@@ -181,7 +214,13 @@ class _CategoryEditPageState extends State<CategoryEditPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('취소'),
+            child: Text(
+              '취소',
+              style: TextStyle(
+                color: Colors.grey.shade600,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ],
       ),
@@ -192,7 +231,34 @@ class _CategoryEditPageState extends State<CategoryEditPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('색상 선택'),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.focusMint.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                Icons.palette,
+                color: AppColors.focusMint,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              '색상 선택',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: Colors.grey.shade800,
+              ),
+            ),
+          ],
+        ),
         content: SizedBox(
           width: double.maxFinite,
           height: 200,
@@ -217,9 +283,16 @@ class _CategoryEditPageState extends State<CategoryEditPage> {
                     color: color,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: isSelected ? Colors.black : Colors.transparent,
+                      color: isSelected ? Colors.white : Colors.transparent,
                       width: 3,
                     ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: color.withOpacity(0.3),
+                        blurRadius: isSelected ? 8 : 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
                   child: isSelected
                       ? const Icon(
@@ -236,7 +309,13 @@ class _CategoryEditPageState extends State<CategoryEditPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('취소'),
+            child: Text(
+              '취소',
+              style: TextStyle(
+                color: Colors.grey.shade600,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ],
       ),
@@ -246,19 +325,23 @@ class _CategoryEditPageState extends State<CategoryEditPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFAFAFA),
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.brown),
+          icon: Icon(
+            Icons.arrow_back_ios,
+            color: Colors.grey.shade700,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          isEditing ? '✏️ 카테고리 수정' : '➕ 카테고리 추가',
-          style: const TextStyle(
-            color: Colors.brown,
-            fontWeight: FontWeight.w600,
+          isEditing ? '✏️ 카테고리 수정' : '🆕 카테고리 추가',
+          style: TextStyle(
+            color: Colors.grey.shade800,
+            fontWeight: FontWeight.w700,
+            fontSize: 20,
           ),
         ),
         centerTitle: true,
@@ -266,11 +349,13 @@ class _CategoryEditPageState extends State<CategoryEditPage> {
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
             colors: [
-              Color(0xFFFAFAFA),
-              Color(0xFFF0F8F0),
+              Color(0xFFFDFDFD),
+              Color(0xFFF8F9FA),
+              Color(0xFFF0F8F5),
+              Color(0xFFFFF8F3),
             ],
           ),
         ),
@@ -281,22 +366,12 @@ class _CategoryEditPageState extends State<CategoryEditPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 미리보기 카드
                 _buildPreviewCard(),
-                
                 const SizedBox(height: 24),
-                
-                // 기본 정보 입력
                 _buildBasicInfoSection(),
-                
                 const SizedBox(height: 24),
-                
-                // 디자인 설정
                 _buildDesignSection(),
-                
                 const SizedBox(height: 32),
-                
-                // 저장 버튼
                 _buildSaveButton(),
               ],
             ),
@@ -308,15 +383,19 @@ class _CategoryEditPageState extends State<CategoryEditPage> {
 
   Widget _buildPreviewCard() {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        color: Colors.white.withOpacity(0.9),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: AppColors.focusMint.withOpacity(0.2),
+          width: 1.5,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.brown.withValues(alpha: 0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
+            color: AppColors.focusMint.withOpacity(0.1),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -325,44 +404,68 @@ class _CategoryEditPageState extends State<CategoryEditPage> {
         children: [
           Row(
             children: [
-              const Icon(Icons.preview, color: Colors.brown, size: 20),
-              const SizedBox(width: 8),
-              const Text(
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.focusMint.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  Icons.preview,
+                  color: AppColors.focusMint,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
                 '미리보기',
                 style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.brown,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.grey.shade800,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
           
-          // 카테고리 미리보기
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: Colors.grey.shade50,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey.shade200),
+              color: (_selectedColor == Colors.transparent 
+                  ? AppColors.focusMint 
+                  : _selectedColor).withOpacity(0.05),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: (_selectedColor == Colors.transparent 
+                    ? AppColors.focusMint 
+                    : _selectedColor).withOpacity(0.3),
+                width: 1.5,
+              ),
             ),
             child: Row(
               children: [
                 Container(
-                  width: 48,
-                  height: 48,
+                  width: 52,
+                  height: 52,
                   decoration: BoxDecoration(
-                    color: _selectedColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
+                    color: (_selectedColor == Colors.transparent 
+                        ? AppColors.focusMint 
+                        : _selectedColor).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(14),
                     border: Border.all(
-                      color: _selectedColor.withValues(alpha: 0.3),
+                      color: (_selectedColor == Colors.transparent 
+                          ? AppColors.focusMint 
+                          : _selectedColor).withOpacity(0.3),
+                      width: 1.5,
                     ),
                   ),
                   child: Icon(
                     _selectedIcon,
-                    color: _selectedColor,
-                    size: 24,
+                    color: _selectedColor == Colors.transparent 
+                        ? AppColors.focusMint 
+                        : _selectedColor,
+                    size: 26,
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -371,17 +474,20 @@ class _CategoryEditPageState extends State<CategoryEditPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        _nameController.text.isEmpty ? '카테고리 이름' : _nameController.text,
-                        style: const TextStyle(
+                        _nameController.text.isEmpty ? '카테고리 이름을 입력해주세요' : _nameController.text,
+                        style: TextStyle(
                           fontSize: 16,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w700,
+                          color: _nameController.text.isEmpty 
+                              ? Colors.grey.shade500 
+                              : Colors.grey.shade800,
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        _descriptionController.text.isEmpty ? '카테고리 설명' : _descriptionController.text,
+                        '집중 활동을 위한 카테고리',
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 13,
                           color: Colors.grey.shade600,
                         ),
                       ),
@@ -398,14 +504,18 @@ class _CategoryEditPageState extends State<CategoryEditPage> {
 
   Widget _buildBasicInfoSection() {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        color: Colors.white.withOpacity(0.9),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: AppColors.focusMint.withOpacity(0.2),
+          width: 1.5,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withValues(alpha: 0.1),
-            blurRadius: 8,
+            color: AppColors.focusMint.withOpacity(0.1),
+            blurRadius: 12,
             offset: const Offset(0, 4),
           ),
         ],
@@ -413,28 +523,72 @@ class _CategoryEditPageState extends State<CategoryEditPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            '기본 정보',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.brown,
-            ),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.focusMint.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  Icons.edit_note,
+                  color: AppColors.focusMint,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                '기본 정보',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.grey.shade800,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
           
-          // 카테고리 이름
           TextFormField(
             controller: _nameController,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey.shade800,
+            ),
             decoration: InputDecoration(
               labelText: '카테고리 이름',
-              hintText: '예: 업무, 공부, 운동',
-              prefixIcon: const Icon(Icons.label),
+              labelStyle: TextStyle(
+                color: AppColors.focusMint,
+                fontWeight: FontWeight.w600,
+              ),
+              hintText: '예: 업무, 공부, 운동, 독서',
+              hintStyle: TextStyle(
+                color: Colors.grey.shade500,
+                fontWeight: FontWeight.w500,
+              ),
+              prefixIcon: Icon(
+                Icons.label_outline,
+                color: AppColors.focusMint,
+              ),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(
+                  color: Colors.grey.shade300,
+                  width: 1.5,
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(
+                  color: AppColors.focusMint,
+                  width: 2,
+                ),
               ),
               filled: true,
-              fillColor: Colors.grey.shade50,
+              fillColor: AppColors.focusMint.withOpacity(0.03),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             ),
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
@@ -447,31 +601,6 @@ class _CategoryEditPageState extends State<CategoryEditPage> {
             },
             onChanged: (value) => setState(() {}),
           ),
-          
-          const SizedBox(height: 16),
-          
-          // 카테고리 설명
-          TextFormField(
-            controller: _descriptionController,
-            decoration: InputDecoration(
-              labelText: '카테고리 설명',
-              hintText: '이 카테고리에 대한 간단한 설명',
-              prefixIcon: const Icon(Icons.description),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              filled: true,
-              fillColor: Colors.grey.shade50,
-            ),
-            maxLines: 2,
-            validator: (value) {
-              if (value != null && value.trim().length > 50) {
-                return '설명은 50자 이하로 입력해주세요';
-              }
-              return null;
-            },
-            onChanged: (value) => setState(() {}),
-          ),
         ],
       ),
     );
@@ -479,14 +608,18 @@ class _CategoryEditPageState extends State<CategoryEditPage> {
 
   Widget _buildDesignSection() {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        color: Colors.white.withOpacity(0.9),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: AppColors.focusMint.withOpacity(0.2),
+          width: 1.5,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withValues(alpha: 0.1),
-            blurRadius: 8,
+            color: AppColors.focusMint.withOpacity(0.1),
+            blurRadius: 12,
             offset: const Offset(0, 4),
           ),
         ],
@@ -494,116 +627,170 @@ class _CategoryEditPageState extends State<CategoryEditPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            '디자인 설정',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.brown,
-            ),
-          ),
-          const SizedBox(height: 16),
-          
-          // 아이콘 선택
           Row(
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      '아이콘',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.grey,
-                      ),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.focusMint.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  Icons.design_services,
+                  color: AppColors.focusMint,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                '디자인 설정',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.grey.shade800,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          
+          // 아이콘 선택
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '아이콘',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey.shade700,
+                ),
+              ),
+              const SizedBox(height: 8),
+              GestureDetector(
+                onTap: _showIconPicker,
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.focusMint.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: AppColors.focusMint.withOpacity(0.3),
+                      width: 1.5,
                     ),
-                    const SizedBox(height: 8),
-                    GestureDetector(
-                      onTap: _showIconPicker,
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 44,
+                        height: 44,
                         decoration: BoxDecoration(
-                          color: Colors.grey.shade50,
+                          color: (_selectedColor == Colors.transparent 
+                              ? AppColors.focusMint 
+                              : _selectedColor).withOpacity(0.1),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.grey.shade300),
+                          border: Border.all(
+                            color: (_selectedColor == Colors.transparent 
+                                ? AppColors.focusMint 
+                                : _selectedColor).withOpacity(0.3),
+                            width: 1,
+                          ),
                         ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                color: _selectedColor.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Icon(
-                                _selectedIcon,
-                                color: _selectedColor,
-                                size: 20,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            const Text('아이콘 선택'),
-                            const Spacer(),
-                            const Icon(Icons.arrow_forward_ios, size: 16),
-                          ],
+                        child: Icon(
+                          _selectedIcon,
+                          color: _selectedColor == Colors.transparent 
+                              ? AppColors.focusMint 
+                              : _selectedColor,
+                          size: 22,
                         ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 12),
+                      Text(
+                        '아이콘 선택',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                      const Spacer(),
+                      Icon(
+                        Icons.arrow_forward_ios,
+                        size: 16,
+                        color: AppColors.focusMint,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
           ),
           
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
           
           // 색상 선택
-          Row(
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      '색상',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.grey,
-                      ),
+              Text(
+                '색상',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey.shade700,
+                ),
+              ),
+              const SizedBox(height: 8),
+              GestureDetector(
+                onTap: _showColorPicker,
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.focusMint.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: AppColors.focusMint.withOpacity(0.3),
+                      width: 1.5,
                     ),
-                    const SizedBox(height: 8),
-                    GestureDetector(
-                      onTap: _showColorPicker,
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 44,
+                        height: 44,
                         decoration: BoxDecoration(
-                          color: Colors.grey.shade50,
+                          color: _selectedColor == Colors.transparent 
+                              ? AppColors.focusMint 
+                              : _selectedColor,
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.grey.shade300),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                color: _selectedColor,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: (_selectedColor == Colors.transparent 
+                                  ? AppColors.focusMint 
+                                  : _selectedColor).withOpacity(0.3),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
                             ),
-                            const SizedBox(width: 12),
-                            const Text('색상 선택'),
-                            const Spacer(),
-                            const Icon(Icons.arrow_forward_ios, size: 16),
                           ],
                         ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 12),
+                      Text(
+                        '색상 선택',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                      const Spacer(),
+                      Icon(
+                        Icons.arrow_forward_ios,
+                        size: 16,
+                        color: AppColors.focusMint,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -614,34 +801,62 @@ class _CategoryEditPageState extends State<CategoryEditPage> {
   }
 
   Widget _buildSaveButton() {
-    return SizedBox(
+    return Container(
       width: double.infinity,
-      height: 56,
+      height: 60,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.focusMint.withOpacity(0.4),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
       child: ElevatedButton(
         onPressed: _isLoading ? null : _saveCategory,
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.brown,
+          backgroundColor: AppColors.focusMint,
           foregroundColor: Colors.white,
+          elevation: 0,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(18),
           ),
-          elevation: 4,
         ),
         child: _isLoading
-            ? const SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(
-                  color: Colors.white,
-                  strokeWidth: 2,
-                ),
+            ? Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    isEditing ? '수정 중...' : '생성 중...',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
               )
-            : Text(
-                isEditing ? '수정 완료' : '카테고리 생성',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    isEditing ? '수정 완료' : '카테고리 생성',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
               ),
       ),
     );

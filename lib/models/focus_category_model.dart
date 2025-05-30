@@ -9,6 +9,7 @@ class FocusCategoryModel {
   final bool isDefault;
   final bool isActive;
   final bool isFavorite;
+  final int order;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -21,6 +22,7 @@ class FocusCategoryModel {
     this.isDefault = false,
     this.isActive = true,
     this.isFavorite = false,
+    this.order = 0,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -38,6 +40,7 @@ class FocusCategoryModel {
       isDefault: map['isDefault'] ?? false,
       isActive: map['isActive'] ?? true,
       isFavorite: map['isFavorite'] ?? false,
+      order: map['order'] ?? 0,
       createdAt: DateTime.fromMillisecondsSinceEpoch(
         map['createdAt'] ?? DateTime.now().millisecondsSinceEpoch,
       ),
@@ -58,6 +61,7 @@ class FocusCategoryModel {
       'isDefault': isDefault,
       'isActive': isActive,
       'isFavorite': isFavorite,
+      'order': order,
       'createdAt': createdAt.millisecondsSinceEpoch,
       'updatedAt': updatedAt.millisecondsSinceEpoch,
     };
@@ -72,6 +76,7 @@ class FocusCategoryModel {
     bool? isDefault,
     bool? isActive,
     bool? isFavorite,
+    int? order,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -84,6 +89,7 @@ class FocusCategoryModel {
       isDefault: isDefault ?? this.isDefault,
       isActive: isActive ?? this.isActive,
       isFavorite: isFavorite ?? this.isFavorite,
+      order: order ?? this.order,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -91,7 +97,7 @@ class FocusCategoryModel {
 
   @override
   String toString() {
-    return 'FocusCategoryModel(id: $id, name: $name, description: $description, isDefault: $isDefault, isActive: $isActive)';
+    return 'FocusCategoryModel(id: $id, name: $name, description: $description, isDefault: $isDefault, isActive: $isActive, order: $order)';
   }
 
   @override
@@ -110,80 +116,88 @@ class FocusCategoryModel {
       FocusCategoryModel(
         id: 'work',
         name: '업무',
-        description: '업무 관련 집중',
+        description: '',
         icon: Icons.work,
         color: Colors.blue,
         isDefault: true,
+        order: 0,
         createdAt: now,
         updatedAt: now,
       ),
       FocusCategoryModel(
         id: 'study',
         name: '공부',
-        description: '학습 및 연구',
+        description: '',
         icon: Icons.school,
         color: Colors.green,
         isDefault: true,
+        order: 1,
         createdAt: now,
         updatedAt: now,
       ),
       FocusCategoryModel(
         id: 'exercise',
         name: '운동',
-        description: '운동 및 건강',
+        description: '',
         icon: Icons.fitness_center,
         color: Colors.orange,
         isDefault: true,
+        order: 2,
         createdAt: now,
         updatedAt: now,
       ),
       FocusCategoryModel(
         id: 'reading',
         name: '독서',
-        description: '책 읽기 및 학습',
+        description: '',
         icon: Icons.menu_book,
         color: Colors.purple,
         isDefault: true,
+        order: 3,
         createdAt: now,
         updatedAt: now,
       ),
       FocusCategoryModel(
         id: 'creative',
         name: '창작',
-        description: '창작 활동',
+        description: '',
         icon: Icons.palette,
         color: Colors.pink,
         isDefault: true,
+        order: 4,
         createdAt: now,
         updatedAt: now,
       ),
       FocusCategoryModel(
         id: 'meditation',
         name: '명상',
-        description: '명상 및 휴식',
+        description: '',
         icon: Icons.spa,
         color: Colors.teal,
         isDefault: true,
+        order: 5,
         createdAt: now,
         updatedAt: now,
       ),
       FocusCategoryModel(
         id: 'personal',
         name: '개인',
-        description: '개인 업무',
+        description: '',
         icon: Icons.person,
         color: Colors.indigo,
         isDefault: true,
+        order: 6,
         createdAt: now,
         updatedAt: now,
       ),
       FocusCategoryModel(
         id: 'other',
         name: '기타',
-        description: '기타 활동',
+        description: '',
         icon: Icons.more_horiz,
         color: Colors.grey,
         isDefault: true,
+        order: 7,
         createdAt: now,
         updatedAt: now,
       ),

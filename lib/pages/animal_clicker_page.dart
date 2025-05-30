@@ -6,6 +6,7 @@ import '../services/animal_collector_service.dart';
 import '../data/animal_data.dart';
 import 'animal_collection_page.dart';
 import '../utils/snackbar_utils.dart';
+import '../constants/app_colors.dart';
 
 class AnimalClickerPage extends StatefulWidget {
   final UserModel currentUser;
@@ -269,7 +270,7 @@ class _AnimalClickerPageState extends State<AnimalClickerPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.green.shade50,
+      backgroundColor: AppColors.petCoralLight,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -278,17 +279,17 @@ class _AnimalClickerPageState extends State<AnimalClickerPage>
           children: [
             Icon(
               Icons.touch_app,
-              color: Colors.green.shade600,
+              color: AppColors.petCoral,
               size: 20,
             ),
             const SizedBox(width: 6),
             Flexible(
               child: Text(
-                '동물 클릭커',
+                '동물 클리커',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
-                  color: Colors.green.shade600,
+                  color: AppColors.petCoral,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -309,7 +310,7 @@ class _AnimalClickerPageState extends State<AnimalClickerPage>
             },
             icon: Icon(
               Icons.collections_bookmark,
-              color: Colors.green.shade600,
+              color: AppColors.petCoral,
               size: 20,
             ),
             tooltip: '도감',
@@ -320,9 +321,9 @@ class _AnimalClickerPageState extends State<AnimalClickerPage>
             margin: const EdgeInsets.only(right: 16),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: Colors.amber.shade100,
+              color: AppColors.petCoralLight,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.amber.shade300),
+              border: Border.all(color: AppColors.petCoral.withOpacity(0.3)),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -330,7 +331,7 @@ class _AnimalClickerPageState extends State<AnimalClickerPage>
                 Icon(
                   Icons.monetization_on,
                   size: 16,
-                  color: Colors.amber.shade700,
+                  color: AppColors.petCoral,
                 ),
                 const SizedBox(width: 4),
                 Text(
@@ -338,7 +339,7 @@ class _AnimalClickerPageState extends State<AnimalClickerPage>
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
-                    color: Colors.amber.shade700,
+                    color: AppColors.petCoral,
                   ),
                 ),
               ],
@@ -350,7 +351,7 @@ class _AnimalClickerPageState extends State<AnimalClickerPage>
           ? const Center(child: CircularProgressIndicator())
           : _currentPet == null
               ? _buildGachaScreen()
-              : _buildClickerScreen(),
+              : _buildPetCareScreen(),
     );
   }
 
@@ -368,7 +369,7 @@ class _AnimalClickerPageState extends State<AnimalClickerPage>
             style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.bold,
-              color: Colors.green.shade700,
+              color: AppColors.petCoral,
             ),
           ),
           const SizedBox(height: 8),
@@ -376,7 +377,7 @@ class _AnimalClickerPageState extends State<AnimalClickerPage>
             '새로운 동물 친구를 만나보세요!',
             style: TextStyle(
               fontSize: 16,
-              color: Colors.green.shade600,
+              color: AppColors.petCoral,
             ),
           ),
           
@@ -390,16 +391,16 @@ class _AnimalClickerPageState extends State<AnimalClickerPage>
               shape: BoxShape.circle,
               gradient: LinearGradient(
                 colors: [
-                  Colors.purple.shade200,
-                  Colors.blue.shade200,
-                  Colors.green.shade200,
+                  AppColors.petCoralLight,
+                  AppColors.petCoral.withOpacity(0.7),
+                  AppColors.petCoralDark.withOpacity(0.8),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.purple.shade100,
+                  color: AppColors.petCoral.withOpacity(0.3),
                   blurRadius: 20,
                   spreadRadius: 5,
                 ),
@@ -437,14 +438,14 @@ class _AnimalClickerPageState extends State<AnimalClickerPage>
             },
             icon: Icon(
               Icons.collections_bookmark,
-              color: Colors.indigo.shade600,
+              color: AppColors.petCoral,
               size: 18,
             ),
             label: Text(
               '📖 도감 보기',
               style: TextStyle(
                 fontSize: 14,
-                color: Colors.indigo.shade600,
+                color: AppColors.petCoral,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -483,9 +484,9 @@ class _AnimalClickerPageState extends State<AnimalClickerPage>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _buildProbabilityItem('⭐', '일반', '70%', Colors.green),
-              _buildProbabilityItem('⭐⭐', '희귀', '25%', Colors.blue),
-              _buildProbabilityItem('⭐⭐⭐', '전설', '5%', Colors.purple),
+              _buildProbabilityItem('⭐', '일반', '70%', AppColors.petCoral),
+              _buildProbabilityItem('⭐⭐', '희귀', '25%', AppColors.petCoralDark),
+              _buildProbabilityItem('⭐⭐⭐', '전설', '5%', AppColors.petCoral.withOpacity(0.8)),
             ],
           ),
         ],
@@ -533,7 +534,7 @@ class _AnimalClickerPageState extends State<AnimalClickerPage>
             child: ElevatedButton(
               onPressed: () => _performGacha(isFree: true),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green.shade400,
+                backgroundColor: AppColors.petCoral,
                 foregroundColor: Colors.white,
                 elevation: 4,
                 shape: RoundedRectangleBorder(
@@ -566,7 +567,7 @@ class _AnimalClickerPageState extends State<AnimalClickerPage>
                 ? () => _performGacha(isFree: false)
                 : null,
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.amber.shade400,
+              backgroundColor: AppColors.petCoralDark,
               foregroundColor: Colors.white,
               elevation: 4,
               shape: RoundedRectangleBorder(
@@ -594,7 +595,7 @@ class _AnimalClickerPageState extends State<AnimalClickerPage>
   }
 
   // 클릭커 게임 화면
-  Widget _buildClickerScreen() {
+  Widget _buildPetCareScreen() {
     if (_currentPet == null || _currentSpecies == null) {
       return const Center(child: Text('동물 정보를 불러올 수 없습니다.'));
     }
@@ -760,15 +761,15 @@ class _AnimalClickerPageState extends State<AnimalClickerPage>
                     shape: BoxShape.circle,
                     gradient: LinearGradient(
                       colors: [
-                        Colors.blue.shade100,
-                        Colors.purple.shade100,
+                        AppColors.petCoralLight,
+                        AppColors.petCoral.withOpacity(0.7),
                       ],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.blue.shade200,
+                        color: AppColors.petCoral.withOpacity(0.3),
                         blurRadius: 30,
                         spreadRadius: 10,
                       ),
@@ -837,7 +838,7 @@ class _AnimalClickerPageState extends State<AnimalClickerPage>
                     _currentPet!.currentTitle,
                     style: TextStyle(
                       fontSize: 12,
-                      color: Colors.purple.shade600,
+                      color: AppColors.petCoral,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -850,7 +851,7 @@ class _AnimalClickerPageState extends State<AnimalClickerPage>
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
-                  color: Colors.green.shade600,
+                  color: AppColors.petCoral,
                 ),
               ),
             ],
@@ -860,7 +861,7 @@ class _AnimalClickerPageState extends State<AnimalClickerPage>
             value: _currentPet!.expProgress,
             backgroundColor: Colors.grey.shade200,
             valueColor: AlwaysStoppedAnimation<Color>(
-              _currentPet!.level >= 99 ? Colors.amber.shade400 : Colors.green.shade400
+              _currentPet!.level >= 99 ? Colors.amber.shade400 : AppColors.petCoral
             ),
             minHeight: 12,
           ),
@@ -932,10 +933,10 @@ class _AnimalClickerPageState extends State<AnimalClickerPage>
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: canAfford ? Colors.green.shade50 : Colors.grey.shade50,
+        color: canAfford ? AppColors.petCoralLight : Colors.grey.shade50,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: canAfford ? Colors.green.shade200 : Colors.grey.shade200,
+          color: canAfford ? AppColors.petCoral : Colors.grey.shade200,
         ),
       ),
       child: Row(
@@ -949,7 +950,7 @@ class _AnimalClickerPageState extends State<AnimalClickerPage>
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
-                    color: canAfford ? Colors.green.shade700 : Colors.grey.shade600,
+                    color: canAfford ? AppColors.petCoral : Colors.grey.shade600,
                   ),
                 ),
                 Text(
@@ -965,7 +966,7 @@ class _AnimalClickerPageState extends State<AnimalClickerPage>
           ElevatedButton(
             onPressed: canAfford ? () => _purchaseUpgrade(upgradeType) : null,
             style: ElevatedButton.styleFrom(
-              backgroundColor: canAfford ? Colors.green.shade400 : Colors.grey.shade300,
+              backgroundColor: canAfford ? AppColors.petCoral : Colors.grey.shade300,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               minimumSize: Size.zero,
