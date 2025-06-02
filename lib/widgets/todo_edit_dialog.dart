@@ -118,41 +118,63 @@ class _TodoEditDialogState extends State<TodoEditDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
+    final screenWidth = MediaQuery.of(context).size.width;
+    
     return Dialog(
+      backgroundColor: Colors.white,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Container(
-        width: MediaQuery.of(context).size.width * 0.9,
-        height: MediaQuery.of(context).size.height * 0.8,
-        padding: const EdgeInsets.all(24),
+        width: screenWidth * 0.95,
+        height: screenHeight * 0.85, // 화면의 85% 사용
         child: Column(
           children: [
             // 헤더
-            Row(
-              children: [
-                Text(
-                  '할일 수정',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.grey800,
+            Container(
+              padding: const EdgeInsets.fromLTRB(24, 20, 16, 16),
+              decoration: BoxDecoration(
+                color: AppColors.routineSkyLight,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(20),
+                  topRight: Radius.circular(20),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.edit_note,
+                    color: AppColors.routineSky,
+                    size: 28,
                   ),
-                ),
-                const Spacer(),
-                IconButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(Icons.close),
-                ),
-              ],
+                  const SizedBox(width: 12),
+                  Text(
+                    '할일 수정',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.routineSky,
+                    ),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: Icon(
+                      Icons.close,
+                      color: AppColors.routineSky,
+                    ),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 16),
             
-            // 폼
+            // 기본 정보만 표시 (수정시에는 간단하게)
             Expanded(
               child: Form(
                 key: _formKey,
                 child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(20),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -163,7 +185,7 @@ class _TodoEditDialogState extends State<TodoEditDialog> {
                         hint: '할일을 입력하세요',
                         isRequired: true,
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 20),
                       
                       // 설명
                       _buildTextField(
@@ -172,27 +194,13 @@ class _TodoEditDialogState extends State<TodoEditDialog> {
                         hint: '상세 설명을 입력하세요',
                         maxLines: 3,
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 24),
                       
-                      // 타입 선택
-                        _buildTypeSelector(),
-                        const SizedBox(height: 16),
+                      // 타입과 카테고리 (수정시에는 읽기 전용)
+                      _buildReadOnlyInfo(),
+                      const SizedBox(height: 24),
                       
-                      // 반복 설정 (반복 할일과 습관)
-                      if ((_selectedType == TodoType.repeat || _selectedType == TodoType.habit) && !widget.todo.isCompleted) ...[
-                        _buildRepeatTypeSelector(),
-                        const SizedBox(height: 16),
-                        if (_selectedRepeatType != null) ...[
-                          _buildRepeatDetailSettings(),
-                          const SizedBox(height: 16),
-                        ],
-                      ],
-                      
-                      // 카테고리 선택
-                      _buildCategorySelector(),
-                      const SizedBox(height: 16),
-                      
-                      // 우선순위 & 난이도
+                      // 우선순위와 난이도
                       Row(
                         children: [
                           Expanded(child: _buildPrioritySelector()),
@@ -200,66 +208,191 @@ class _TodoEditDialogState extends State<TodoEditDialog> {
                           Expanded(child: _buildDifficultySelector()),
                         ],
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 24),
                       
-                      // 시작일 설정
-                      _buildStartDateSelector(),
-                      const SizedBox(height: 16),
+                      // 날짜 설정
+                      _buildDateSection(),
+                      const SizedBox(height: 24),
                       
-                      // 기한 설정
-                      _buildDueDateSelector(),
-                      
-                      // 일회성 할일 표시 옵션
-                      if (_selectedType == TodoType.oneTime && !widget.todo.isCompleted) ...[
-                        const SizedBox(height: 16),
-                        _buildShowOptionSelector(),
-                      ],
-                      
-                      // 습관 목표 설정
-                      if (_selectedType == TodoType.habit && !widget.todo.isCompleted)
-                        _buildHabitTargetSelector(),
-                      
-                      // 예상 시간
+                      // 예상 시간과 태그
                       _buildEstimatedTimeSelector(),
-                      const SizedBox(height: 16),
-                      
-                      // 태그
+                      const SizedBox(height: 20),
                       _buildTagsSelector(),
-                      const SizedBox(height: 16),
-                      
-                      // 알림 설정
-                      _buildReminderSelector(),
                     ],
                   ),
                 ),
               ),
             ),
             
-            // 버튼
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('취소'),
+            // 하단 버튼들
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                border: Border(
+                  top: BorderSide(
+                    color: AppColors.grey200,
+                    width: 1,
                   ),
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: _saveTodo,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.purple600,
-                      foregroundColor: Colors.white,
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.grey600,
+                        side: BorderSide(color: AppColors.grey400),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        '취소',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
-                    child: const Text('수정'),
                   ),
-                ),
-              ],
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: _saveTodo,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.routineSky,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 2,
+                      ),
+                      child: const Text(
+                        '수정',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildReadOnlyInfo() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.grey50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.grey300),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.info_outline,
+                color: AppColors.grey600,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '할일 정보',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.grey700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.blue600.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '${_selectedType.emoji} ${_selectedType.displayName}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.blue600,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.routineSky.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '${_selectedCategory.emoji} ${_selectedCategory.displayName}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.routineSky,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDateSection() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.grey50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.grey300),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.date_range,
+                color: AppColors.routineSky,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '날짜 설정',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.grey700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _buildStartDateSelector(),
+          const SizedBox(height: 12),
+          _buildDueDateSelector(),
+        ],
       ),
     );
   }

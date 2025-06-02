@@ -135,8 +135,9 @@ class _TodoFilterDialogState extends State<TodoFilterDialog> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
+      backgroundColor: Colors.white,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Container(
         width: MediaQuery.of(context).size.width * 0.9,

@@ -720,7 +720,7 @@ class _FocusingPageState extends State<FocusingPage>
     return WillPopScope(
       onWillPop: _onWillPop,
       child: Scaffold(
-        backgroundColor: Colors.transparent,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,

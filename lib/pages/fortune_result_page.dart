@@ -5,6 +5,10 @@ import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:ui' as ui;
 import 'dart:io';
+import 'package:flutter/services.dart';
+
+// Constants imports
+import '../constants/app_colors.dart';
 
 // Models imports
 import '../models/models.dart';
@@ -13,6 +17,7 @@ import '../data/fortune_messages.dart';
 import '../services/user_service.dart';
 import '../services/reward_service.dart';
 import '../utils/snackbar_utils.dart';
+import '../services/theme_service.dart';
 
 class FortuneResultPage extends StatefulWidget {
   final UserModel currentUser;

@@ -534,7 +534,7 @@ class _TodoListPageState extends State<TodoListPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.scaffoldBackground,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: _buildAppBar(),
       body: _buildBody(),
       floatingActionButton: _buildFloatingActionButton(),
@@ -548,7 +548,7 @@ class _TodoListPageState extends State<TodoListPage>
         children: [
           Icon(
             Icons.check_circle_outline,
-            color: AppColors.purple600,
+            color: AppColors.routineSky,
             size: 28,
           ),
           const SizedBox(width: 8),
@@ -557,13 +557,14 @@ class _TodoListPageState extends State<TodoListPage>
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: Colors.blue.shade700,
+              color: AppColors.routineSky,
             ),
           ),
         ],
       ),
-      backgroundColor: Colors.transparent,
-      elevation: 0,
+      backgroundColor: Colors.white,
+      elevation: 1,
+      shadowColor: Colors.black.withOpacity(0.1),
       actions: [
         // 필터 버튼
         Stack(
@@ -571,7 +572,7 @@ class _TodoListPageState extends State<TodoListPage>
             IconButton(
               icon: Icon(
                 Icons.filter_list,
-                color: AppColors.purple600,
+                color: AppColors.routineSky,
               ),
               onPressed: _showFilterDialog,
             ),
@@ -594,7 +595,7 @@ class _TodoListPageState extends State<TodoListPage>
         IconButton(
           icon: Icon(
             Icons.track_changes,
-            color: AppColors.purple600,
+            color: AppColors.routineSky,
           ),
           onPressed: _showHabitDashboard,
           tooltip: '습관 추적',
@@ -603,16 +604,16 @@ class _TodoListPageState extends State<TodoListPage>
         IconButton(
           icon: Icon(
             Icons.analytics_outlined,
-            color: AppColors.purple600,
+            color: AppColors.routineSky,
           ),
           onPressed: _showStatsDialog,
         ),
       ],
       bottom: TabBar(
         controller: _tabController,
-        labelColor: AppColors.purple700,
+        labelColor: AppColors.routineSky,
         unselectedLabelColor: AppColors.grey600,
-        indicatorColor: AppColors.purple600,
+        indicatorColor: AppColors.routineSky,
         tabs: const [
           Tab(text: '오늘', icon: Icon(Icons.today)),
           Tab(text: '전체', icon: Icon(Icons.list)),
@@ -770,9 +771,9 @@ class _TodoListPageState extends State<TodoListPage>
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
       ),
-      // 완료된 할일은 연한 녹색, 비활성화된 할일은 회색으로 표시
+      // 완료된 할일은 연한 라벤더, 비활성화된 할일은 회색으로 표시
       color: todo.isCompleted 
-          ? Colors.green.shade50
+          ? AppColors.routineSkyLight
           : (shouldShowAsDisabled 
               ? AppColors.grey50.withOpacity(0.7)
               : null),
@@ -790,7 +791,7 @@ class _TodoListPageState extends State<TodoListPage>
                   // 줄 긋기 제거
                   decoration: null,
                   color: todo.isCompleted 
-                      ? AppColors.green700  // 완료된 할일은 진한 녹색 텍스트
+                      ? AppColors.routineSkyDark  // 완료된 할일은 진한 보라색 텍스트
                       : (shouldShowAsDisabled ? AppColors.grey500 : AppColors.grey800),
                 ),
               ),
@@ -860,13 +861,13 @@ class _TodoListPageState extends State<TodoListPage>
               const SizedBox(height: 4),
               Row(
                 children: [
-                  Icon(Icons.check_circle, size: 16, color: AppColors.green600),
+                  Icon(Icons.check_circle, size: 16, color: AppColors.routineSky),
                   const SizedBox(width: 4),
                   Text(
                     '완료: '
                     + '${todo.completedAt!.year}.${todo.completedAt!.month.toString().padLeft(2, '0')}.${todo.completedAt!.day.toString().padLeft(2, '0')}'
                     + ' ${todo.completedAt!.hour.toString().padLeft(2, '0')}:${todo.completedAt!.minute.toString().padLeft(2, '0')}',
-                    style: TextStyle(fontSize: 12, color: AppColors.green600),
+                    style: TextStyle(fontSize: 12, color: AppColors.routineSky),
                   ),
                 ],
               ),
@@ -890,7 +891,7 @@ class _TodoListPageState extends State<TodoListPage>
                 // 카테고리
                 _buildCompactTag(
                   '${todo.categoryEmoji} ${todo.categoryName}',
-                  AppColors.purple700,
+                  AppColors.routineSky,
                 ),
                 // 난이도
                 _buildCompactTag(
@@ -1007,11 +1008,11 @@ class _TodoListPageState extends State<TodoListPage>
           width: 36,
           height: 36,
           decoration: BoxDecoration(
-            color: isCheckable ? AppColors.purple600 : AppColors.grey400,
+            color: isCheckable ? AppColors.routineSky : AppColors.grey400,
             shape: BoxShape.circle,
             boxShadow: isCheckable ? [
               BoxShadow(
-                color: AppColors.purple600.withOpacity(0.3),
+                color: AppColors.routineSky.withOpacity(0.3),
                 blurRadius: 8,
                 offset: const Offset(0, 2),
               ),
@@ -1039,12 +1040,12 @@ class _TodoListPageState extends State<TodoListPage>
             shape: BoxShape.circle,
             border: Border.all(
               color: todo.isCompleted 
-                  ? AppColors.purple600 
-                  : (isCheckable ? AppColors.purple600 : AppColors.grey400),
+                  ? AppColors.routineSky 
+                  : (isCheckable ? AppColors.routineSky : AppColors.grey400),
               width: 2,
             ),
             color: todo.isCompleted 
-                ? AppColors.purple600 
+                ? AppColors.routineSky 
                 : Colors.transparent,
           ),
           child: todo.isCompleted 
@@ -1073,7 +1074,7 @@ class _TodoListPageState extends State<TodoListPage>
             Icon(
               Icons.trending_up,
               size: 16,
-              color: isCheckable ? AppColors.purple600 : AppColors.grey400,
+              color: isCheckable ? AppColors.routineSky : AppColors.grey400,
             ),
             const SizedBox(width: 4),
             Text(
@@ -1081,7 +1082,7 @@ class _TodoListPageState extends State<TodoListPage>
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: isCheckable ? AppColors.purple700 : AppColors.grey500,
+                color: isCheckable ? AppColors.routineSky : AppColors.grey500,
               ),
             ),
             const Spacer(),
@@ -1090,7 +1091,7 @@ class _TodoListPageState extends State<TodoListPage>
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.bold,
-                color: isCheckable ? AppColors.purple700 : AppColors.grey500,
+                color: isCheckable ? AppColors.routineSky : AppColors.grey500,
               ),
             ),
           ],
@@ -1100,7 +1101,7 @@ class _TodoListPageState extends State<TodoListPage>
           value: progress,
           backgroundColor: AppColors.grey200,
           valueColor: AlwaysStoppedAnimation<Color>(
-            isCheckable ? AppColors.purple600 : AppColors.grey400
+            isCheckable ? AppColors.routineSky : AppColors.grey400
           ),
           minHeight: 6,
         ),
@@ -1173,7 +1174,7 @@ class _TodoListPageState extends State<TodoListPage>
   Widget _buildFloatingActionButton() {
     return FloatingActionButton(
       onPressed: _addTodo,
-      backgroundColor: AppColors.purple600,
+      backgroundColor: AppColors.routineSky,
       child: const Icon(
         Icons.add,
         color: Colors.white,

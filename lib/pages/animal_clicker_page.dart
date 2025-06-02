@@ -7,6 +7,8 @@ import '../data/animal_data.dart';
 import 'animal_collection_page.dart';
 import '../utils/snackbar_utils.dart';
 import '../constants/app_colors.dart';
+import '../services/user_service.dart';
+import '../services/theme_service.dart';
 
 class AnimalClickerPage extends StatefulWidget {
   final UserModel currentUser;
@@ -270,7 +272,7 @@ class _AnimalClickerPageState extends State<AnimalClickerPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.petCoralLight,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -365,7 +367,7 @@ class _AnimalClickerPageState extends State<AnimalClickerPage>
           
           // 뽑기 제목
           Text(
-            '🎲 동물 뽑기',
+            '📦 동물 뽑기',
             style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.bold,
@@ -473,7 +475,7 @@ class _AnimalClickerPageState extends State<AnimalClickerPage>
       child: Column(
         children: [
           Text(
-            '🎯 뽑기 확률',
+            '🎲 뽑기 확률',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
@@ -547,7 +549,7 @@ class _AnimalClickerPageState extends State<AnimalClickerPage>
                   Icon(Icons.card_giftcard, size: 24),
                   SizedBox(width: 8),
                   Text(
-                    '🎁 무료 뽑기 (24시간마다)',
+                    '무료 뽑기 (24시간마다)',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -580,7 +582,7 @@ class _AnimalClickerPageState extends State<AnimalClickerPage>
                 Icon(Icons.monetization_on, size: 24),
                 SizedBox(width: 8),
                 Text(
-                  '💰 포인트 뽑기 (500P)',
+                  '포인트 뽑기 (500P)',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -968,13 +970,11 @@ class _AnimalClickerPageState extends State<AnimalClickerPage>
             style: ElevatedButton.styleFrom(
               backgroundColor: canAfford ? AppColors.petCoral : Colors.grey.shade300,
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              minimumSize: Size.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             ),
             child: Text(
               cost,
-              style: const TextStyle(fontSize: 12),
+              style: const TextStyle(fontSize: 13),
             ),
           ),
         ],

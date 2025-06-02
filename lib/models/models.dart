@@ -14,4 +14,7 @@ export 'fortune_model.dart';
 export 'attendance_model.dart';
 export 'ranking_model.dart';
 export 'current_pet.dart';
-export 'collected_animal.dart'; 
+export 'collected_animal.dart';
+export 'focus_category_model.dart';
+export 'focus_analytics_model.dart';
+export 'mood_entry_model.dart'; 

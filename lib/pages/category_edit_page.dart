@@ -138,6 +138,7 @@ class _CategoryEditPageState extends State<CategoryEditPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(18),
         ),
@@ -325,7 +326,7 @@ class _CategoryEditPageState extends State<CategoryEditPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -346,6 +347,7 @@ class _CategoryEditPageState extends State<CategoryEditPage> {
         ),
         centerTitle: true,
       ),
+      resizeToAvoidBottomInset: true,
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -359,21 +361,28 @@ class _CategoryEditPageState extends State<CategoryEditPage> {
             ],
           ),
         ),
-        child: Form(
-          key: _formKey,
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildPreviewCard(),
-                const SizedBox(height: 24),
-                _buildBasicInfoSection(),
-                const SizedBox(height: 24),
-                _buildDesignSection(),
-                const SizedBox(height: 32),
-                _buildSaveButton(),
-              ],
+        child: SafeArea(
+          child: Form(
+            key: _formKey,
+            child: SingleChildScrollView(
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 20,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildPreviewCard(),
+                  const SizedBox(height: 24),
+                  _buildBasicInfoSection(),
+                  const SizedBox(height: 24),
+                  _buildDesignSection(),
+                  const SizedBox(height: 32),
+                  _buildSaveButton(),
+                ],
+              ),
             ),
           ),
         ),

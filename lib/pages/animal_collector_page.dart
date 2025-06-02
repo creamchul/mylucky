@@ -290,7 +290,7 @@ class _AnimalCollectorPageState extends State<AnimalCollectorPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.petCoralLight,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -389,7 +389,7 @@ class _AnimalCollectorPageState extends State<AnimalCollectorPage>
           
           // 뽑기 제목
           Text(
-            '🎲 동물 뽑기',
+            '📦 동물 뽑기',
             style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.bold,
@@ -497,7 +497,7 @@ class _AnimalCollectorPageState extends State<AnimalCollectorPage>
       child: Column(
         children: [
           Text(
-            '🎯 뽑기 확률',
+            '🎲 뽑기 확률',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
@@ -571,7 +571,7 @@ class _AnimalCollectorPageState extends State<AnimalCollectorPage>
                   Icon(Icons.card_giftcard, size: 24),
                   SizedBox(width: 8),
                   Text(
-                    '🎁 무료 뽑기 (24시간마다)',
+                    '무료 뽑기 (24시간마다)',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -604,7 +604,7 @@ class _AnimalCollectorPageState extends State<AnimalCollectorPage>
                 Icon(Icons.monetization_on, size: 24),
                 SizedBox(width: 8),
                 Text(
-                  '💰 포인트 뽑기 (500P)',
+                  '포인트 뽑기 (500P)',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -1008,9 +1008,8 @@ class _AnimalCollectorPageState extends State<AnimalCollectorPage>
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        minimumSize: Size.zero, // 최소 크기 제거
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap, // 터치 영역 최소화
+        minimumSize: const Size(80, 44),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -1021,18 +1020,18 @@ class _AnimalCollectorPageState extends State<AnimalCollectorPage>
             child: Text(
               title,
               style: const TextStyle(
-                fontSize: 11,
+                fontSize: 12,
                 fontWeight: FontWeight.w600,
               ),
               textAlign: TextAlign.center,
               maxLines: 1,
             ),
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: 3),
           Text(
             cost,
             style: const TextStyle(
-              fontSize: 9,
+              fontSize: 10,
             ),
           ),
         ],

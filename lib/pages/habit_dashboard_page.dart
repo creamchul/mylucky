@@ -159,7 +159,7 @@ class _HabitDashboardPageState extends State<HabitDashboardPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.scaffoldBackground,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: _buildAppBar(),
       body: _buildBody(),
     );

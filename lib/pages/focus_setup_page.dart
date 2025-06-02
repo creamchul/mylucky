@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart'; // CupertinoSlider 사용
+import 'package:flutter/foundation.dart';
 import '../../models/user_model.dart'; // UserModel 필요
 import '../../services/focus_service.dart';
 import '../../models/focus_session_model.dart';
@@ -8,6 +9,7 @@ import '../services/category_service.dart'; // 카테고리 서비스 추가
 import '../constants/app_colors.dart'; // 앱 색상 시스템 추가
 import './focusing_page.dart';
 import './category_management_page.dart'; // 카테고리 관리 페이지 추가
+import '../services/theme_service.dart';
 
 class FocusSetupPage extends StatefulWidget {
   final UserModel currentUser; // 현재 사용자 정보
@@ -167,23 +169,23 @@ class _FocusSetupPageState extends State<FocusSetupPage> with TickerProviderStat
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
           icon: Icon(
-            Icons.arrow_back_ios,
-            color: Colors.grey.shade700,
+            Icons.arrow_back,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          '집중하기 설정',
+          '집중하기',
           style: TextStyle(
-            color: Colors.grey.shade800,
-            fontWeight: FontWeight.w700,
             fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
         centerTitle: true,
@@ -251,7 +253,7 @@ class _FocusSetupPageState extends State<FocusSetupPage> with TickerProviderStat
                   Container(
                     padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.9),
+                      color: Colors.white,
                       borderRadius: BorderRadius.circular(18),
                       border: Border.all(
                         color: AppColors.focusMint.withOpacity(0.2),
@@ -330,7 +332,7 @@ class _FocusSetupPageState extends State<FocusSetupPage> with TickerProviderStat
                     Container(
                       padding: const EdgeInsets.all(24),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.9),
+                        color: Colors.white,
                         borderRadius: BorderRadius.circular(18),
                         border: Border.all(
                           color: AppColors.focusMint.withOpacity(0.2),
@@ -472,7 +474,7 @@ class _FocusSetupPageState extends State<FocusSetupPage> with TickerProviderStat
                     Container(
                       padding: const EdgeInsets.all(24),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.9),
+                        color: Colors.white,
                         borderRadius: BorderRadius.circular(18),
                         border: Border.all(
                           color: AppColors.focusMint.withOpacity(0.2),
@@ -529,7 +531,7 @@ class _FocusSetupPageState extends State<FocusSetupPage> with TickerProviderStat
                   Container(
                     padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.9),
+                      color: Colors.white,
                       borderRadius: BorderRadius.circular(18),
                       border: Border.all(
                         color: AppColors.focusMint.withOpacity(0.2),
@@ -806,12 +808,29 @@ class _FocusSetupPageState extends State<FocusSetupPage> with TickerProviderStat
   }
 
   void _showCategorySelector() {
+    final screenHeight = MediaQuery.of(context).size.height;
+    final screenWidth = MediaQuery.of(context).size.width;
+    
+    // 모바일 최적화: 화면 크기에 따른 동적 높이
+    final dialogHeight = screenHeight < 600 
+        ? screenHeight * 0.85  // 작은 화면: 85%
+        : screenHeight < 700 
+            ? screenHeight * 0.75  // 중간 화면: 75%
+            : screenHeight * 0.7;   // 큰 화면: 70%
+            
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
+      // 키보드 대응 및 모바일 UX 개선
+      isDismissible: true,
+      enableDrag: true,
       builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.7,
+        height: dialogHeight,
+        // 모바일 최적화: 안전 영역 고려
+        margin: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+        ),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: const BorderRadius.only(
@@ -828,6 +847,7 @@ class _FocusSetupPageState extends State<FocusSetupPage> with TickerProviderStat
         ),
         child: Column(
           children: [
+            // 드래그 핸들 (모바일 UX 향상)
             Container(
               margin: const EdgeInsets.only(top: 12),
               width: 40,
@@ -886,6 +906,8 @@ class _FocusSetupPageState extends State<FocusSetupPage> with TickerProviderStat
                       },
                       borderRadius: BorderRadius.circular(12),
                       child: Container(
+                        // 모바일 최적화: 최소 터치 높이 보장
+                        constraints: const BoxConstraints(minHeight: 60),
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
                           color: isSelected 
@@ -902,8 +924,8 @@ class _FocusSetupPageState extends State<FocusSetupPage> with TickerProviderStat
                         child: Row(
                           children: [
                             Container(
-                              width: 40,
-                              height: 40,
+                              width: 44, // 기존: 40에서 44로 증가
+                              height: 44, // 기존: 40에서 44로 증가
                               decoration: BoxDecoration(
                                 color: category.color == Colors.transparent
                                     ? AppColors.focusMint.withOpacity(0.2)
@@ -915,10 +937,10 @@ class _FocusSetupPageState extends State<FocusSetupPage> with TickerProviderStat
                                 color: category.color == Colors.transparent
                                     ? AppColors.focusMint
                                     : category.color,
-                                size: 20,
+                                size: 22, // 기존: 20에서 22로 증가
                               ),
                             ),
-                            const SizedBox(width: 16),
+                            const SizedBox(width: 18), // 기존: 16에서 18로 증가
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -926,7 +948,7 @@ class _FocusSetupPageState extends State<FocusSetupPage> with TickerProviderStat
                                   Text(
                                     category.name,
                                     style: TextStyle(
-                                      fontSize: 16,
+                                      fontSize: 17, // 기존: 16에서 17로 증가
                                       fontWeight: FontWeight.w600,
                                       color: Colors.grey.shade800,
                                     ),
@@ -935,7 +957,7 @@ class _FocusSetupPageState extends State<FocusSetupPage> with TickerProviderStat
                                     Text(
                                       category.description,
                                       style: TextStyle(
-                                        fontSize: 12,
+                                        fontSize: 13, // 기존: 12에서 13으로 증가
                                         color: Colors.grey.shade600,
                                       ),
                                     ),
@@ -946,7 +968,7 @@ class _FocusSetupPageState extends State<FocusSetupPage> with TickerProviderStat
                               Icon(
                                 Icons.check_circle,
                                 color: AppColors.focusMint,
-                                size: 24,
+                                size: 26, // 기존: 24에서 26으로 증가
                               ),
                           ],
                         ),

@@ -24,12 +24,15 @@ class TodoAddDialog extends StatefulWidget {
   State<TodoAddDialog> createState() => _TodoAddDialogState();
 }
 
-class _TodoAddDialogState extends State<TodoAddDialog> {
+class _TodoAddDialogState extends State<TodoAddDialog> with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _habitTargetController = TextEditingController();
   final _targetCountController = TextEditingController();
+  
+  // 탭 컨트롤러 추가
+  late TabController _tabController;
   
   TodoType _selectedType = TodoType.oneTime;
   TodoCategory _selectedCategory = TodoCategory.personal;
@@ -65,6 +68,7 @@ class _TodoAddDialogState extends State<TodoAddDialog> {
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 3, vsync: this);
     _loadAvailableTags();
   }
 
@@ -74,90 +78,152 @@ class _TodoAddDialogState extends State<TodoAddDialog> {
     _descriptionController.dispose();
     _habitTargetController.dispose();
     _targetCountController.dispose();
+    _tabController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
+    final screenWidth = MediaQuery.of(context).size.width;
+    
     return Dialog(
+      backgroundColor: Colors.white,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Container(
-        width: MediaQuery.of(context).size.width * 0.9,
-        height: MediaQuery.of(context).size.height * 0.8,
-        padding: const EdgeInsets.all(24),
+        width: screenWidth * 0.95,
+        height: screenHeight * 0.85, // 화면의 85% 사용
         child: Column(
           children: [
             // 헤더
-            Row(
+            Container(
+              padding: const EdgeInsets.fromLTRB(24, 20, 16, 16),
+              decoration: BoxDecoration(
+                color: AppColors.routineSkyLight,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(20),
+                  topRight: Radius.circular(20),
+                ),
+              ),
+              child: Row(
               children: [
+                  Icon(
+                    Icons.add_task,
+                    color: AppColors.routineSky,
+                    size: 28,
+                  ),
+                  const SizedBox(width: 12),
                 Text(
                   '새 할일 추가',
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
-                    color: AppColors.grey800,
+                      color: AppColors.routineSky,
                   ),
                 ),
                 const Spacer(),
                 IconButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(Icons.close),
+                    icon: Icon(
+                      Icons.close,
+                      color: AppColors.routineSky,
+                    ),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            ),
             
-            // 폼
-            Expanded(
-              child: Form(
-                key: _formKey,
-                child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // 제목
-                      _buildTextField(
-                        controller: _titleController,
-                        label: '제목',
-                        hint: '할일을 입력하세요',
-                        isRequired: true,
-                      ),
-                      const SizedBox(height: 16),
-                      
-                      // 설명
-                      _buildTextField(
-                        controller: _descriptionController,
-                        label: '설명 (선택사항)',
-                        hint: '상세 설명을 입력하세요',
-                        maxLines: 3,
-                      ),
-                      const SizedBox(height: 16),
-                      
-                      // 타입 선택
-                      _buildTypeSelector(),
-                      const SizedBox(height: 24),
-                      
-                      // 유형별 상세 설정
-                      _buildTypeSpecificSettings(),
-                      
-                      // 공통 설정
-                      _buildCommonSettings(),
-                    ],
+            // 탭 바
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                border: Border(
+                  bottom: BorderSide(
+                    color: AppColors.grey200,
+                    width: 1,
                   ),
                 ),
               ),
+              child: TabBar(
+                controller: _tabController,
+                labelColor: AppColors.routineSky,
+                unselectedLabelColor: AppColors.grey600,
+                indicatorColor: AppColors.routineSky,
+                indicatorWeight: 3,
+                labelStyle: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+                unselectedLabelStyle: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+                tabs: const [
+                  Tab(
+                    icon: Icon(Icons.edit_note, size: 20),
+                    text: '기본',
+                  ),
+                  Tab(
+                    icon: Icon(Icons.tune, size: 20),
+                    text: '세부사항',
+                  ),
+                  Tab(
+                    icon: Icon(Icons.settings, size: 20),
+                    text: '고급',
+                  ),
+                ],
+              ),
             ),
             
-            // 버튼
-            const SizedBox(height: 16),
-            Row(
+            // 탭 컨텐츠
+            Expanded(
+              child: Form(
+                key: _formKey,
+                child: TabBarView(
+                  controller: _tabController,
+                    children: [
+                    _buildBasicTab(),
+                    _buildDetailsTab(),
+                    _buildAdvancedTab(),
+                  ],
+                ),
+                      ),
+            ),
+                      
+            // 하단 버튼들
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                border: Border(
+                  top: BorderSide(
+                    color: AppColors.grey200,
+                    width: 1,
+                  ),
+                ),
+              ),
+              child: Row(
               children: [
                 Expanded(
                   child: OutlinedButton(
                     onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('취소'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.grey600,
+                        side: BorderSide(color: AppColors.grey400),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        '취소',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -165,13 +231,25 @@ class _TodoAddDialogState extends State<TodoAddDialog> {
                   child: ElevatedButton(
                     onPressed: _saveTodo,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.purple600,
+                        backgroundColor: AppColors.routineSky,
                       foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 2,
                     ),
-                    child: const Text('추가'),
+                      child: const Text(
+                        '추가',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                   ),
                 ),
               ],
+              ),
             ),
           ],
         ),
@@ -937,7 +1015,7 @@ class _TodoAddDialogState extends State<TodoAddDialog> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    '선택된 요일: ${_selectedWeekdays.map((w) => weekdays[w - 1]).join(', ')}',
+                    '선택된 요일: ${_selectedWeekdays.map((d) => ['월', '화', '수', '목', '금', '토', '일'][d - 1]).join(', ')}',
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
@@ -1698,48 +1776,160 @@ class _TodoAddDialogState extends State<TodoAddDialog> {
     }
   }
 
-  Widget _buildTypeSpecificSettings() {
-    switch (_selectedType) {
-      case TodoType.oneTime:
-        return _buildOneTimeSettings();
-      case TodoType.repeat:
-        return _buildRepeatSettings();
-      case TodoType.habit:
-        return _buildHabitSettings();
-      default:
-        return const SizedBox.shrink();
-    }
+  Widget _buildBasicTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 제목
+          _buildTextField(
+            controller: _titleController,
+            label: '제목',
+            hint: '할일을 입력하세요',
+            isRequired: true,
+          ),
+          const SizedBox(height: 20),
+          
+          // 설명
+          _buildTextField(
+            controller: _descriptionController,
+            label: '설명 (선택사항)',
+            hint: '상세 설명을 입력하세요',
+            maxLines: 3,
+          ),
+          const SizedBox(height: 24),
+          
+          // 타입 선택
+          _buildTypeSelector(),
+          const SizedBox(height: 24),
+          
+          // 카테고리 선택
+          _buildCategorySelector(),
+          
+          // 타입별 간단한 안내
+          const SizedBox(height: 20),
+          _buildTypeInfo(),
+        ],
+      ),
+    );
   }
 
-  Widget _buildOneTimeSettings() {
-    return Column(
+  Widget _buildTypeInfo() {
+    String title = '';
+    String description = '';
+    IconData icon = Icons.info;
+    Color color = AppColors.grey600;
+    
+    switch (_selectedType) {
+      case TodoType.oneTime:
+        title = '일회성 할일';
+        description = '한 번만 수행하면 완료됩니다.\n세부사항 탭에서 시작일과 마감일을 설정할 수 있어요.';
+        icon = Icons.event_note;
+        color = AppColors.blue600;
+        break;
+      case TodoType.repeat:
+        title = '반복 할일';
+        description = '정기적으로 반복되는 할일입니다.\n고급 탭에서 반복 주기를 설정할 수 있어요.';
+        icon = Icons.repeat;
+        color = AppColors.green600;
+        break;
+      case TodoType.habit:
+        title = '습관 만들기';
+        description = '꾸준히 실천하고 싶은 습관입니다.\n고급 탭에서 목표 횟수와 반복 주기를 설정할 수 있어요.';
+        icon = Icons.track_changes;
+        color = AppColors.orange600;
+        break;
+    }
+    
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: color.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            icon,
+            color: color,
+            size: 24,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          '일회성 할일 설정',
+                  title,
           style: TextStyle(
-            fontSize: 16,
+                    fontSize: 14,
             fontWeight: FontWeight.w600,
-            color: AppColors.grey700,
+                    color: color,
           ),
         ),
         const SizedBox(height: 4),
         Text(
-          '한 번만 수행하는 할일입니다',
+                  description,
           style: TextStyle(
             fontSize: 12,
             color: AppColors.grey600,
+                    height: 1.3,
           ),
         ),
-        const SizedBox(height: 12),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailsTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 우선순위 & 난이도 (한 줄로)
+          Row(
+            children: [
+              Expanded(child: _buildPrioritySelector()),
+              const SizedBox(width: 16),
+              Expanded(child: _buildDifficultySelector()),
+            ],
+          ),
+          const SizedBox(height: 24),
         
-        // 완료할 때까지 표시하기 옵션
-        Container(
-          padding: const EdgeInsets.all(16),
+          // 날짜 설정 섹션
+          _buildDateSection(),
+          const SizedBox(height: 24),
+          
+          // 예상 소요 시간
+          _buildEstimatedTimeSelector(),
+          const SizedBox(height: 24),
+          
+          // 태그 설정
+          _buildTagsSelector(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDateSection() {
+    return Container(
+      padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             color: AppColors.grey50,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.grey400),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppColors.grey300,
+          width: 1,
+        ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1747,23 +1937,229 @@ class _TodoAddDialogState extends State<TodoAddDialog> {
               Row(
                 children: [
                   Icon(
-                    Icons.visibility,
-                    color: AppColors.blue600,
+                Icons.date_range,
+                color: AppColors.routineSky,
                     size: 20,
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    '표시 옵션',
+                '날짜 설정',
                     style: TextStyle(
-                      fontSize: 14,
+                  fontSize: 16,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.grey700,
+                  color: AppColors.grey800,
                     ),
                   ),
                 ],
               ),
+          const SizedBox(height: 16),
+          
+          // 시작일
+          _buildStartDateSelector(),
+          const SizedBox(height: 16),
+          
+          // 마감일
+          _buildDueDateSelector(),
+          
+          // 날짜 안내 메시지
+          if (_selectedStartDate != null || _selectedDueDate != null) ...[
               const SizedBox(height: 12),
-              
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.blue600.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.info_outline,
+                    color: AppColors.blue600,
+                    size: 16,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _getDateInfoMessage(),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.blue600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  String _getDateInfoMessage() {
+    if (_selectedStartDate != null && _selectedDueDate != null) {
+      return '시작일부터 마감일까지 오늘 할일에 표시됩니다.';
+    } else if (_selectedStartDate != null) {
+      return '시작일부터 오늘 할일에 표시됩니다.';
+    } else if (_selectedDueDate != null) {
+      return '마감일까지 오늘 할일에 표시됩니다.';
+    }
+    return '';
+  }
+
+  Widget _buildAdvancedTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 반복/습관 설정 (타입에 따라 표시)
+          if (_selectedType == TodoType.repeat || _selectedType == TodoType.habit)
+            _buildRepeatSettingsSection(),
+          
+          // 알림 설정
+          const SizedBox(height: 16),
+          _buildReminderSection(),
+          
+          // 일회성 할일 전용 설정
+          if (_selectedType == TodoType.oneTime) ...[
+            const SizedBox(height: 16),
+            _buildOneTimeOptionsSection(),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRepeatSettingsSection() {
+    final isHabit = _selectedType == TodoType.habit;
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(color: AppColors.grey300),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: ExpansionTile(
+        leading: Icon(
+          isHabit ? Icons.track_changes : Icons.repeat,
+          color: isHabit ? AppColors.orange600 : AppColors.green600,
+        ),
+        title: Text(
+          isHabit ? '습관 설정' : '반복 설정',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: AppColors.grey800,
+          ),
+        ),
+        subtitle: Text(
+          isHabit ? '목표 횟수와 반복 주기를 설정하세요' : '반복 주기를 설정하세요',
+          style: TextStyle(
+            fontSize: 12,
+            color: AppColors.grey600,
+          ),
+        ),
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                // 반복 유형 선택
+                _buildRepeatTypeSelector(),
+                
+                // 반복 유형별 상세 설정
+                if (_selectedRepeatType != null) ...[
+                  const SizedBox(height: 16),
+                  _buildRepeatDetailSettings(),
+                ],
+                
+                // 습관일 때 목표 횟수 설정
+                if (isHabit) ...[
+                  const SizedBox(height: 16),
+                  _buildHabitTargetSelector(),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReminderSection() {
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(color: AppColors.grey300),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: ExpansionTile(
+        leading: Icon(
+          Icons.notifications_outlined,
+          color: AppColors.purple600,
+        ),
+        title: Text(
+          '알림 설정',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: AppColors.grey800,
+          ),
+        ),
+        subtitle: Text(
+          _hasReminder ? '알림이 설정되었습니다' : '알림을 설정하세요 (선택사항)',
+          style: TextStyle(
+            fontSize: 12,
+            color: _hasReminder ? AppColors.purple600 : AppColors.grey600,
+          ),
+        ),
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: _buildReminderSelector(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOneTimeOptionsSection() {
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(color: AppColors.grey300),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: ExpansionTile(
+        leading: Icon(
+          Icons.visibility_outlined,
+          color: AppColors.blue600,
+        ),
+        title: Text(
+          '표시 옵션',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: AppColors.grey800,
+          ),
+        ),
+        subtitle: Text(
+          _showUntilCompleted ? '완료할 때까지 표시' : '기간 내에만 표시',
+          style: TextStyle(
+            fontSize: 12,
+            color: AppColors.blue600,
+          ),
+        ),
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: _buildShowUntilCompletedOptions(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildShowUntilCompletedOptions() {
+    return Column(
+      children: [
               // 완료할 때까지 표시하기
               GestureDetector(
                 onTap: () {
@@ -1858,7 +2254,7 @@ class _TodoAddDialogState extends State<TodoAddDialog> {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              '시작일부터 마감일까지만 오늘 할일에 표시됩니다\n(마감일이 없으면 시작일 이후 완료될 때까지 표시)',
+                        '시작일부터 마감일까지만 오늘 할일에 표시됩니다',
                               style: TextStyle(
                                 fontSize: 12,
                                 color: AppColors.grey600,
@@ -1869,130 +2265,8 @@ class _TodoAddDialogState extends State<TodoAddDialog> {
                       ),
                     ],
                   ),
-                ),
-              ),
-            ],
           ),
         ),
-      ],
-    );
-  }
-
-  Widget _buildRepeatSettings() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          '반복 할일 설정',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: AppColors.grey700,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          '반복 주기를 설정해주세요',
-          style: TextStyle(
-            fontSize: 12,
-            color: AppColors.grey600,
-          ),
-        ),
-        const SizedBox(height: 12),
-        
-        // 반복 유형 선택
-        _buildRepeatTypeSelector(),
-        const SizedBox(height: 16),
-        
-        // 반복 유형별 상세 설정
-        if (_selectedRepeatType != null)
-          _buildRepeatDetailSettings(),
-      ],
-    );
-  }
-
-  Widget _buildHabitSettings() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          '습관 설정',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: AppColors.grey700,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          '습관의 반복 주기를 설정해주세요',
-          style: TextStyle(
-            fontSize: 12,
-            color: AppColors.grey600,
-          ),
-        ),
-        const SizedBox(height: 12),
-        
-        // 반복 유형 선택
-        _buildRepeatTypeSelector(),
-        const SizedBox(height: 16),
-        
-        // 반복 유형별 상세 설정
-        if (_selectedRepeatType != null)
-          _buildRepeatDetailSettings(),
-        
-        // 목표 횟수 설정
-        _buildHabitTargetSelector(),
-      ],
-    );
-  }
-
-  Widget _buildCommonSettings() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          '추가 설정',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: AppColors.grey700,
-          ),
-        ),
-        const SizedBox(height: 12),
-        
-        // 시작일 선택
-        _buildStartDateSelector(),
-        const SizedBox(height: 16),
-        
-        // 마감일 선택
-        _buildDueDateSelector(),
-        const SizedBox(height: 16),
-        
-        // 카테고리 선택
-        _buildCategorySelector(),
-        const SizedBox(height: 16),
-        
-        // 우선순위 & 난이도
-        Row(
-          children: [
-            Expanded(child: _buildPrioritySelector()),
-            const SizedBox(width: 16),
-            Expanded(child: _buildDifficultySelector()),
-          ],
-        ),
-        const SizedBox(height: 16),
-        
-        // 예상 시간
-        _buildEstimatedTimeSelector(),
-        const SizedBox(height: 16),
-        
-        // 태그
-        _buildTagsSelector(),
-        const SizedBox(height: 16),
-        
-        // 알림 설정
-        _buildReminderSelector(),
       ],
     );
   }
@@ -2095,6 +2369,21 @@ class _TodoAddDialogState extends State<TodoAddDialog> {
     );
   }
 
+  Color _getRepeatTypeColor(RepeatType repeatType) {
+    switch (repeatType) {
+      case RepeatType.daily:
+        return AppColors.blue600;
+      case RepeatType.weekly:
+        return AppColors.green600;
+      case RepeatType.monthly:
+        return AppColors.orange600;
+      case RepeatType.yearly:
+        return AppColors.purple600;
+      case RepeatType.custom:
+        return AppColors.red600;
+    }
+  }
+
   Widget _buildRepeatDetailSettings() {
     switch (_selectedRepeatType!) {
       case RepeatType.daily:
@@ -2104,7 +2393,6 @@ class _TodoAddDialogState extends State<TodoAddDialog> {
       case RepeatType.monthly:
         return _buildMonthlySettings();
       case RepeatType.yearly:
-        // 연간 반복은 지원하지 않음
         return const SizedBox.shrink();
       case RepeatType.custom:
         return _buildCustomSettings();
@@ -2139,21 +2427,6 @@ class _TodoAddDialogState extends State<TodoAddDialog> {
         ],
       ),
     );
-  }
-
-  Color _getRepeatTypeColor(RepeatType repeatType) {
-    switch (repeatType) {
-      case RepeatType.daily:
-        return AppColors.blue600;
-      case RepeatType.weekly:
-        return AppColors.green600;
-      case RepeatType.monthly:
-        return AppColors.orange600;
-      case RepeatType.yearly:
-        return AppColors.purple600; // 사용되지 않지만 완전성을 위해
-      case RepeatType.custom:
-        return AppColors.red600;
-    }
   }
 
   Widget _buildMonthlySettings() {
